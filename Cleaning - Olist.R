@@ -38,7 +38,6 @@ orders_all <- orders_all[!duplicated(orders_all$order_id),]
 orders_all <- merge(orders_all,order_payments,by="order_id",all.x = T)
 orders_all <- orders_all[!duplicated(orders_all$order_id),]
 orders_all <- merge(orders_all,order_items_details,by="order_id",all.X=T)
-orders_all <- orders_all[!duplicated(orders_all$order_id),]
 orders_all <- merge(orders_all,sellers,by="seller_id",all.X=T)
 products_all <- merge(products,products_translation,by="product_category_name",all.X=T)
 products_all <- products_all[!duplicated(products_all$product_id),]
