@@ -1,12 +1,3 @@
-library(ggplot2)
-library(stringi)
-library(dplyr)
-library(ggmap)
-library(geojsonio)
-library(broom)
-library(mapproj)
-library(htmltab)
-
 setwd(paste(getwd(),'/Data',sep=""))
 orders <- read.csv("olist_orders_dataset.csv",header = T)
 customers <- read.csv("olist_customers_dataset.csv",header = T)
