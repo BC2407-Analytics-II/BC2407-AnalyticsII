@@ -2,9 +2,11 @@ library(dplyr)
 library(quantreg)
 library(lubridate)
 
-setwd(paste(getwd(),'/Data',sep=""))
+setwd(paste(getwd(),'/Data',sep="")) 
+#set working directory to the dataset folder (works locally on every computer)
 
-source("../helperFns.R")
+source("../helperFns.R") 
+#import the helper functions
 
 orders_all <- read.csv("Orders_merged.csv")
 orders_all$order_purchase_timestamp <-
