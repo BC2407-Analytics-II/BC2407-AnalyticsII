@@ -4,6 +4,8 @@ library(lubridate)
 
 setwd(paste(getwd(),'/Data',sep=""))
 
+source("../helperFns.R")
+
 orders_all <- read.csv("Orders_merged.csv")
 orders_all$order_purchase_timestamp <-
   as.POSIXct(orders_all$order_purchase_timestamp,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
@@ -58,18 +60,23 @@ fit.p.5
 # summary(fit.p.5, se = "nid")
 
 ###Prediction and classification###
-fit.5.pred=predict(fit.p.5, newdata = test)
-summary(fit.5.pred)
-fit.5.pred[fit.5.pred<=1.4]=1 
-fit.5.pred[(fit.5.pred>1.4)&(fit.5.pred<=2.4)]=2
-fit.5.pred[(fit.5.pred>2.4)&(fit.5.pred<=3.4)]=3
-fit.5.pred[(fit.5.pred>3.4)&(fit.5.pred<=4.4)]=4
-fit.5.pred[fit.5.pred>4.4]=5
-table(fit.5.pred)
-table(test$review_score)
-table(fit.5.pred, test$review_score)
-table(fit.5.pred == test$review_score)
-mean(fit.5.pred == test$review_score)
+calculateAccuracy = function(predictive_model, test){
+    predictions=predict(predictive_model, newdata = test)
+    summary(predictions)
+    predictions[predictions<=1.4]=1 
+    predictions[(predictions>1.4)&(predictions<=2.4)]=2
+    predictions[(predictions>2.4)&(predictions<=3.4)]=3
+    predictions[(predictions>3.4)&(predictions<=4.4)]=4
+    predictions[predictions>4.4]=5
+    print('rating - predictions:')
+    print(table(predictions))
+    print('rating - actual:')
+    print(table(test$review_score))
+    table(predictions, test$review_score)
+    table(predictions == test$review_score)
+    mean(predictions == test$review_score)
+}
+calculateAccuracy(fit.p.5, test)
 summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
 
 ###Finding derivative variables to find improvement###
@@ -81,7 +88,7 @@ orders_all_2$est_del_time<- difftime(orders_all$order_estimated_delivery_date,
                                      orders_all$order_approved_at,
                                      units="days")
 orders_all_2$delta_time<- orders_all_2$est_del_time-orders_all_2$del_time
-orders_all_2$Late <- ifelse(orders_all_2$delta_time<0,1,0)
+orders_all_2$Late <- as.factor(ifelse(orders_all_2$delta_time<0,1,0))
 orders_all_2$total_price <- orders_all_2$price+orders_all_2$freight_value
 orders_all_2$freight_ratio <- orders_all_2$freight_value/orders_all_2$price
 orders_all_2$purchase_day_of_week <- wday(orders_all_2$order_approved_at)
@@ -97,17 +104,96 @@ orders_all_2 <- orders_all_2[ , -which(names(orders_all_2) %in% c("price"))]
 #orders_all_2 <- subset(orders_all_2, select=-payment_type)
 
 ###Train-test split###
-set.seed(3)
-sample <- sample.int(n = nrow(orders_all_2), size = floor(.7*nrow(orders_all_2)), replace = F)
-train <- orders_all_2[sample, ]
-test  <- orders_all_2[-sample, ]
+generateTrainTest(orders_all_2, 0.7)
 
 ### Fit 50th Percentile Line (i.e. Median) ###
-train$Late <- jitter(train$Late)
-train$product_photos_qty <- jitter(train$product_photos_qty)
-train$purchase_day_of_week <- jitter(train$purchase_day_of_week)
-fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train) #tau: percentile level. 0.5 is the 50th percentile (aka median).
-#abline(fit.p.5, col="blue")
+train.jitter = train
+train.jitter$Late <- jitter(train.jitter$Late)
+train.jitter$product_photos_qty <- jitter(train.jitter$product_photos_qty)
+train.jitter$purchase_day_of_week <- jitter(train.jitter$purchase_day_of_week)
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter) #tau: percentile level. 0.5 is the 50th percentile (aka median).
+
+###################################################
+
+print('singular design matrix error. why?')
+sapply(train.jitter, class)
+model.matrix(~train.jitter$review_score+train.jitter$payment_type) #this is the design matrix - matrix that gets passed into the function
+#'singular' matrix means the determinant is zero, e.g. the diagonals of the matrix are all zero.
+print('https://cran.r-project.org/web/packages/quantreg/quantreg.pdf page 68 tells us to use sfn method for sparse matrices')
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter, method='sfn')
+print('error: increase tmpmax. lets use traceback() in the console to see the error')
+#9: stop(mess)
+#8: .local(x, ...)
+#7: chol(a, ...)
+#6: chol(a, ...)
+#5: solve(e, ao %*% y, tmpmax = tmpmax, nnzlmax = nnzlmax, nsubmax = nsubmax)
+#4: solve(e, ao %*% y, tmpmax = tmpmax, nnzlmax = nnzlmax, nsubmax = nsubmax)
+#3: rq.fit.sfn(x, y, tau = tau, ...)
+#2: rq.fit(X, Y, tau = tau, method, ...)
+#1: rq(review_score ~ ., tau = 0.5, data = train.jitter, method = "sfn")
+print('according to documentation in https://stat.ethz.ch/pipermail/r-help/2008-October/178523.html, error originates from rq.fit.sfn')
+print('lets type rq.fit.sfn in console to view the source code https://mail.rfaqs.com/source-code-of-r-method/')
+#    ctrl <- sfn.control()
+#if (!missing(control)) {
+#    control <- as.list(control)
+#    ctrl[names(control)] <- control
+#}
+#nsubmax <- ctrl$nsubmax
+#tmpmax <- ctrl$tmpmax
+print('sfn.control() is what we need to increase tmpmax https://www.rdocumentation.org/packages/quantreg/versions/5.88/topics/sfn.control')
+sfn.control(tmpmax = Inf)
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter, method='sfn')
+print('doesnt work, we might need to run rq.fit.sfn with tmpmax inside ourselves')
+sfn.Y = train.jitter$review_score
+sfn.X = train.jitter
+sfn.X$review_score = NULL
+sfn.X.mat = as.matrix(sfn.X)
+sfn.sX = as.matrix.csr(sfn.X.mat)
+print('error: everything in the matrix must be a number, i.e. we need to one-hot encode the categorical ourselves')
+rm(sfn.X, sfn.X.mat, sfn.Y)
+
+library(mltools)
+library(data.table)
+train.jitter.1hot = one_hot(as.data.table(train.jitter))
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter.1hot) #still gives us the error
+
+sfn.Y = train.jitter.1hot$review_score
+sfn.X = train.jitter.1hot
+sfn.X$review_score = NULL
+sfn.X.mat = as.matrix(sfn.X)
+sfn.sX = as.matrix.csr(sfn.X.mat)
+
+rq.fit.sfn(sfn.sX, sfn.Y, control = list(tmpmax=999999) )
+rm(sfn.X, sfn.X.mat, sfn.Y, sfn.sX, train.jitter, train.jitter.1hot)
+
+#back to the drawing board
+#https://stats.stackexchange.com/questions/70899/what-correlation-makes-a-matrix-singular-and-what-are-implications-of-singularit/70910#70910
+print('hypothesis: del_time, est_del_time and delta_time linear independances is causing this')
+orders_all_2.2 = orders_all_2
+orders_all_2.2$del_time = NULL
+orders_all_2.2$est_del_time = NULL
+#orders_all_2.1$delta_time = -orders_all_2.1$delta_time
+generateTrainTest(orders_all_2.2, 0.7)
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train)
+calculateAccuracy(fit.p.5.2, test)
+#https://stat.ethz.ch/pipermail/r-help/2006-July/109821.html
+#0.561 accuracy. pain
+print('hypothesis is correct: linear independances between the time columns (deriatives of each other) caused the singular matrix problem')
+
+orders_all_2.3 = orders_all_2
+orders_all_2.3$delta_time_percentage = -orders_all_2.3$delta_time/orders_all_2.3$est_del_time
+orders_all_2.3$del_time = NULL
+orders_all_2.3$est_del_time = NULL
+orders_all_2.3$delta_time = NULL
+generateTrainTest(orders_all_2.3, 0.7)
+fit.p.5.3 <- rq(review_score ~ . , tau=.5, data = train)
+calculateAccuracy(fit.p.5.3, test)
+
+###################################################
+
+
+
+abline(fit.p.5, col="blue")
 
 # fit.p.5.2
 # # summary(fit.p.5)

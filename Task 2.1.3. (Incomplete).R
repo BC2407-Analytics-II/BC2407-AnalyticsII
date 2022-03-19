@@ -4,7 +4,7 @@ library(randomForest)
 library(data.table)
 library(readxl)
 
-setwd("C:/Users/Alvin Lim/Documents/GitHub/BC2407-AnalyticsII/Data")
+setwd(paste(getwd(),'/Data',sep=""))
 
 df <- fread("uci_online_retail_cleaned_CLV.csv")
 View(df)
