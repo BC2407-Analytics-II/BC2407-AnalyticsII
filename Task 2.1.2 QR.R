@@ -47,10 +47,8 @@ cor_mat <- cor(subset(orders_all_1, select=-payment_type)) #no meaningful correl
 # par(mfrow=c(1,1))
 
 ###Train-test split###
-set.seed(3)
-sample <- sample.int(n = nrow(orders_all_1), size = floor(.7*nrow(orders_all_1)), replace = F)
-train <- orders_all_1[sample, ]
-test  <- orders_all_1[-sample, ]
+generateTrainTest(orders_all_1, 0.7)
+
 
 ####ML Models####
 ### Fit 50th Percentile Line (i.e. Median) ###
@@ -177,6 +175,7 @@ orders_all_2.2$est_del_time = NULL
 #orders_all_2.1$delta_time = -orders_all_2.1$delta_time
 generateTrainTest(orders_all_2.2, 0.7)
 fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train)
+summary(fit.p.5.2)
 calculateAccuracy(fit.p.5.2, test)
 #https://stat.ethz.ch/pipermail/r-help/2006-July/109821.html
 #0.561 accuracy. pain
@@ -190,49 +189,46 @@ orders_all_2.3$delta_time = NULL
 generateTrainTest(orders_all_2.3, 0.7)
 fit.p.5.3 <- rq(review_score ~ . , tau=.5, data = train)
 calculateAccuracy(fit.p.5.3, test)
+summary(fit.p.5.3)
 
 ###################################################
 
+#From fit.p.5.2 and fit.p.5.3 -> only payment_value, Late, and total_price is important
+#Eliminating other variables
+fit.p.5.4 <- rq(review_score ~ payment_type+Late+total_price, tau=.5, data = train)
+calculateAccuracy(fit.p.5.4, test) #Accuracy improves a little to 0.5627706
+summary(fit.p.5.4) #All variables now become not significant
 
 
-abline(fit.p.5, col="blue")
-
-# fit.p.5.2
-# # summary(fit.p.5)
-# # summary(fit.p.5, se = "nid")
-# 
-# ###Prediction and classification###
-# fit.5.pred=predict(fit.p.5, newdata = test)
-# summary(fit.5.pred)
-# fit.5.pred[fit.5.pred<=1.4]=1 
-# fit.5.pred[(fit.5.pred>1.4)&(fit.5.pred<=2.4)]=2
-# fit.5.pred[(fit.5.pred>2.4)&(fit.5.pred<=3.4)]=3
-# fit.5.pred[(fit.5.pred>3.4)&(fit.5.pred<=4.4)]=4
-# fit.5.pred[fit.5.pred>4.4]=5
-# table(fit.5.pred)
-# table(test$review_score)
-# table(fit.5.pred, test$review_score)
-# table(fit.5.pred == test$review_score)
-# mean(fit.5.pred == test$review_score)
-# summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
-# 
 # # 5th, 10th, 25th, 75th, 90th, 95th percentiles.
-# taus <- c(.05, .1, .25, .75, .90, .95)
-# 
-# table <- data.frame("Tau"=1:6,"beta0"=1:6,"beta_Income"=1:6)
-# 
-# for( i in 1:length(taus)){
-#   fit <- rq(engel$foodexp~engel$income,tau=taus[i])
-#   coef <- coef(fit)
-#   table$Tau[i]=taus[i]
-#   table$beta0[i]=coef[1]
-#   table$beta_Income[i]=coef[2]
-#   abline(fit,col="grey")
-# } 
-# 
-# #classification
-# # glm.fit = glm(Direction ~ Lag1+Lag2, data=Smarket, family=binomial, subset=train)
-# # glm.probs=predict(glm.fit, Smarket.2005, type="response")
-# # glm.pred=rep("Down", 252)
-# # glm.pred[glm.probs>0.5]="Up"
-# # table(glm.pred, Direction.2005)
+taus <- c(.05, .1, .25, .75, .90, .95)
+
+table <- data.frame("Tau"=1:6,"Accuracy"=1:6,"beta0"=1:6,"beta_payment_credit"=1:6,"beta_payment_debit"=1:6,
+                    "beta_payment_voucher"=1:6,"beta_Late"=1:6,"beta_totalprice"=1:6)
+
+calculateAccuracy2 = function(predictive_model, test){
+  predictions=predict(predictive_model, newdata = test)
+  summary(predictions)
+  predictions[predictions<=1.4]=1 
+  predictions[(predictions>1.4)&(predictions<=2.4)]=2
+  predictions[(predictions>2.4)&(predictions<=3.4)]=3
+  predictions[(predictions>3.4)&(predictions<=4.4)]=4
+  predictions[predictions>4.4]=5
+  return(mean(predictions == test$review_score))
+}
+
+for( i in 1:length(taus)){
+  fit <- rq(review_score ~ payment_type+Late+total_price, tau=taus[i], data = train)
+  coef <- coef(fit)
+  table$Tau[i]=taus[i]
+  table$Accuracy[i]= calculateAccuracy2(fit,test)
+  table$beta0[i]=coef[1]
+  table$beta_payment_credit[i]=coef[2]
+  table$beta_payment_debit[i]=coef[3]
+  table$beta_payment_voucher[i]=coef[4]
+  table$beta_Late[i]=coef[5]
+  table$beta_totalprice[i]=coef[6]
+}
+
+#Best accuracy is 0.57452072 from tau = 0.75 onwards -> still pretty bad
+
