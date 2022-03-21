@@ -88,4 +88,3 @@ inspect(product_rules)
 product_rules.df <- as(product_rules, "data.frame")
 product_subRules<-product_rules[quality(product_rules)$lift > 1] # get those with lift > 1 
 product_subRules.df <- as(product_subRules, "data.frame")
-
