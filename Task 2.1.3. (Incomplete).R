@@ -9,7 +9,7 @@ setwd(paste(getwd(),'/Data',sep=""))
 source("../helperFns.R")
 
 df <- fread("uci_online_retail_cleaned_CLV.csv")
-View(df)
+#View(df)
 ## Drop the first column
 df <- df[,-1]
 
@@ -20,6 +20,14 @@ df$StockCode <- factor(df$StockCode)
 df$CustomerID <- factor(df$CustomerID)
 df$Description <- factor(df$Description)
 df$Country <- factor(df$Country)
+df$InvoiceDate <- as.POSIXct(df$InvoiceDate,format="%Y-%m-%d %H:%M:%S",tz="	Europe/London")
+df$InvoiceDate_DayofWeek = factor(weekdays(df$InvoiceDate))
+df$InvoiceDate_DayofMonth = as.numeric(format(df$InvoiceDate, format = "%d"))
+df$InvoiceDate_MonthPeriod = cut(df$InvoiceDate_DayofMonth, breaks=c(0,10,20,31), labels=c("Beginning of Month", "Middle of Month", "End of Month"))
+df$InvoiceDate_MonthName = factor(months(df$InvoiceDate))
+df$InvoiceDate_HourofDay = as.numeric(format(df$InvoiceDate, format = "%H"))
+df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24), labels=c("Midnight", "Morning", "Afternoon", "Evening"))
+
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY*df$MONEY*df$`NEW RECENCY`
