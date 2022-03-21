@@ -234,3 +234,10 @@ for( i in 1:length(taus)){
 
 #Best accuracy is 0.57452072 from tau = 0.75 onwards -> still pretty bad
 
+#------------------------------MARS Implementation------------------------------#
+
+library(earth)
+reviews_mars <- earth(review_score ~ . , degree = 1, data = train)
+summary(reviews_mars)
+
+calculateAccuracy(reviews_mars, test)
