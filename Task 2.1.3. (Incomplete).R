@@ -155,8 +155,64 @@ print(varimpt)
 ## Floor Area is relatively most impt, followed by remaining lease.
 
 '
-
+'
 ## Random Forest
+library(randomForest)
+rf <- randomForest(cluster~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train, importance=T)
+rf
+
+## OOB MSE = 1611604542 ==> OOB RMSE = $40,145
+
+plot(m.RF1)
+## Confirms error stablised before 500 trees.
+
+m.RF1.yhat <- predict(m.RF1, newdata = testset)
+
+RMSE.test.RF1 <- round(sqrt(mean((testset$resale_price - m.RF1.yhat)^2)))
+
+var.impt.RF <- importance(m.RF1)
+
+varImpPlot(m.RF1, type = 1)
+
+'
+
+
+'
+B <- c(25, 25, 25, 100, 100, 100, 500, 500, 500)
+
+# Num of X variables in dataset
+m <- ncol(heart.df)-1
+
+RSF <- rep.int(c(1, floor(sqrt(m)), m), times=3)
+
+OOB.error <- seq(1:9)
+
+set.seed(1)  # for Bootstrap sampling & RSF selection.
+
+for (i in 1:length(B)) {
+  m.RF <- randomForest(AHD ~ . , data = heart.df,
+                       mtry = RSF[i],
+                       ntree = B[i],
+                       na.action = na.omit)
+  OOB.error[i] <- m.RF$err.rate[m.RF$ntree, 1]
+}
+## OOB Error across all trees stored in the last row in err.rate.
+
+results <- data.frame(B, RSF, OOB.error)
+## trying different seeds, OOB error is relatively low for B = 500, RSF = 3.
+## these are default values in randomForest() function.
+
+m.RF.final <- randomForest(AHD ~ . , data = heart.df, na.action = na.omit, importance = T)
+
+m.RF.final  ## Confirms defaults are B = 500, RSF = int(sqrt(m)) = 3
+
+var.impt <- importance(m.RF.final)
+
+varImpPlot(m.RF.final, type = 1)
+
+'
+
+
 
 
 
