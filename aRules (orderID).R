@@ -4,24 +4,24 @@ library(tidyr)
 library(dplyr)
 
 data <- read.csv('Orders_merged.csv')
-data$customer_unique_id = as.factor(data$customer_unique_id)
+data$order_id = as.factor(data$order_id)
 
 #####################################################################################
-# 1 customer 1 basket - items -> categories (18 rules)
+# 1 order 1 basket - items -> categories (2 rules)
 
-# dataframe with customer UID and product category
-customerUID_productCat_long <- data[c('customer_unique_id','product_category_name_english')]
-customerUID_productCat_long$product_category_name_english <- as.factor(customerUID_productCat_long$product_category_name_english)
+# dataframe with order ID and product category
+order_ID_productCat_long <- data[c('order_id','product_category_name_english')]
+order_ID_productCat_long$product_category_name_english <- as.factor(order_ID_productCat_long$product_category_name_english)
 
 # convert to wide format
-customerUID_productCat_wide <- customerUID_productCat_long %>%
-  select(customer_unique_id, product_category_name_english) %>%
+order_ID_productCat_wide <- order_ID_productCat_long %>%
+  select(order_id, product_category_name_english) %>%
   distinct() %>%
   mutate(value = 1) %>%
   spread(product_category_name_english, value, fill = 0)
 
 # convert to transaction object
-cat_transaction  <- as(as.matrix(customerUID_productCat_wide[, -1]), "transactions")
+cat_transaction  <- as(as.matrix(order_ID_productCat_wide[, -1]), "transactions")
 cat_transaction_df <- as(cat_transaction, "data.frame") # for viewing
 
 # get frequent product categories
@@ -37,21 +37,21 @@ cat_subRules<-cat_rules[quality(cat_rules)$lift > 1] # get those with lift > 1
 cat_subRules.df <- as(cat_subRules, "data.frame")
 
 #####################################################################################
-# 1 customer 1 basket - items -> seller_id (16 rules)
+# 1 order 1 basket - items -> seller_id (6 rules)
 
-# dataframe with customer UID and seller ID
-customerUID_sellerID_long <- data[c('customer_unique_id','seller_id')]
-customerUID_sellerID_long$seller_id <- as.factor(customerUID_sellerID_long$seller_id)
+# dataframe with order ID and seller ID
+order_ID_sellerID_long <- data[c('order_id','seller_id')]
+order_ID_sellerID_long$seller_id <- as.factor(order_ID_sellerID_long$seller_id)
 
 # convert to wide format
-customerUID_sellerID_wide <- customerUID_sellerID_long %>%
-  select(customer_unique_id, seller_id) %>%
+order_ID_sellerID_wide <- order_ID_sellerID_long %>%
+  select(order_id, seller_id) %>%
   distinct() %>%
   mutate(value = 1) %>%
   spread(seller_id, value, fill = 0)
 
 # convert to transaction object
-seller_transaction  <- as(as.matrix(customerUID_sellerID_wide[, -1]), "transactions")
+seller_transaction  <- as(as.matrix(order_ID_sellerID_wide[, -1]), "transactions")
 seller_transaction_df <- as(seller_transaction, "data.frame")
 
 # get frequent sellers
@@ -67,14 +67,14 @@ seller_subRules<-seller_rules[quality(seller_rules)$lift > 1] # get those with l
 seller_subRules.df <- as(seller_subRules, "data.frame")
 
 #####################################################################################
-# 1 customer 1 basket - items (31 rules)
+# 1 order 1 basket - items (21 rules)
 
-# dataframe with customer UID and product ID
-customerUID_productID_long <- data[c('customer_unique_id','product_id')]
-customerUID_productID_long$product_id <- as.factor(customerUID_productID_long$product_id)
+# dataframe with order ID and product ID
+order_ID_productID_long <- data[c('order_id','product_id')]
+order_ID_productID_long$product_id <- as.factor(order_ID_productID_long$product_id)
 
 # convert to transaction object
-product_transaction <- transactions(customerUID_productID_long, format = "long")
+product_transaction <- transactions(order_ID_productID_long, format = "long")
 product_transaction_df <- as(product_transaction,"data.frame")
 
 # get frequent products
