@@ -82,12 +82,14 @@ summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
 ###Finding derivative variables to find improvement###
 orders_all_2 <- orders_all
 orders_all_2$del_time <- difftime(orders_all$order_delivered_customer_date,
-                                orders_all$order_purchase_timestamp,
+                                orders_all$order_approved_at,
                                 units="days")
 orders_all_2$est_del_time<- difftime(orders_all$order_estimated_delivery_date,
                                      orders_all$order_approved_at,
                                      units="days")
-orders_all_2$delta_time<- orders_all_2$est_del_time-orders_all_2$del_time
+orders_all_2$delta_time<- difftime(orders_all$order_estimated_delivery_date,
+                                   orders_all$order_delivered_customer_date,
+                                   units="days")
 orders_all_2$Late <- as.factor(ifelse(orders_all_2$delta_time<0,1,0))
 orders_all_2$total_price <- orders_all_2$price+orders_all_2$freight_value
 orders_all_2$freight_ratio <- orders_all_2$freight_value/orders_all_2$price
