@@ -30,7 +30,7 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
-df$clv <- df$FREQUENCY*df$MONEY*df$`NEW RECENCY`
+df$clv <- df$FREQUENCY*df$MONEY*(df$`NEW RECENCY`/60/24)
 df$clv_normalized <- (df$clv-min(df$clv))/(max(df$clv)-min(df$clv))
 
 ## Clustering
@@ -39,21 +39,29 @@ library(factoextra)
 library(cluster)
 library(dplyr)
 ## Subset the cluster to remove all categorical variables
-cluster <- select(df,clv_normalized)
-km <- kmeans(cluster,centers=3,nstart=25)
+set.seed(2014)
+cluster <- select(df,clv)
+#https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
+kmCenters <- kmeans(cluster,centers=3,nstart=25)$centers
+kmCenters = sort(kmCenters)
+km = kmeans(cluster,centers=kmCenters,nstart=25)
 km
+df$cluster = factor(km$cluster)
+summary(df$cluster)
+
+#############################################################################################################
 
 
-## Thresholds
-'Cluster means:
-  clv_normalized
-1    0.006084544
-2    0.999195326
-3    0.189244313'
+
+
+
+
+
+
+
 
 ## Parse the cluster coefficients back to original dataframe
-df$cluster = km$cluster
-df$cluster <- factor(df$cluster)
+
 
 ## Predicting CLV cluster with Logistic Regression
 library(nnet)
@@ -116,6 +124,11 @@ RMSE.mars ## ????
 varimpt <- evimp(mars)
 print(varimpt)
 
+## Random Forest
+library(randomForest)
+rf <- randomForest(cluster~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train, importance=T)
+rf
+
 
 
 '
@@ -164,6 +177,15 @@ print(varimpt)
 
 '
 '
+
+
+
+
+
+
+
+
+
 ## Random Forest
 library(randomForest)
 rf <- randomForest(cluster~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train, importance=T)
