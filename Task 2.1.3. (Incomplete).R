@@ -10,8 +10,6 @@ source("../helperFns.R")
 
 df <- fread("uci_online_retail_cleaned_CLV.csv")
 #View(df)
-## Drop the first column
-df <- df[,-1]
 
 ## Check the type of each column and factorise as necessary
 sapply(df,class)
