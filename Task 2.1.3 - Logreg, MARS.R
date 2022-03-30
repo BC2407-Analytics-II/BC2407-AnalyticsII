@@ -28,10 +28,10 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
-df$clv <- df$FREQUENCY*df$MONEY*(df$`NEW RECENCY`/60/24)
+df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
 
-## Clustering
-## K-Means Clustering to create 3 segments
+## Clustering -----------------------------------------------------
+# K-Means Clustering to create 3 segments
 library(factoextra)
 library(cluster)
 library(dplyr)
@@ -52,122 +52,194 @@ ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
   geom_line() + geom_point()+
   scale_x_continuous(breaks = 1:10)
 
-## Optimal Clusters is at the elbow, so clusters 3 or 4 
+## Optimal Clusters is at the elbow, so clusters 2 or 3 
 ## https://hastie.su.domains/ISLR2/ISLRv2_website.pdf
 # https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
 ## To minimise within-cluster sum of squares using the nstart function
 ## Recommend to use 20 or 50 for nstart otherwise an undesirable local optimum may be obtained
 set.seed(2014)
-kmCenters <- kmeans(df$clv,centers=4,nstart=25)$centers
+kmCenters <- kmeans(df$clv,centers=3,nstart=25)$centers
 kmCenters = sort(kmCenters)
 km = kmeans(df$clv,centers=kmCenters,nstart=25)
 km
-# Cluster Size: 1. 357326 | 2. 24634 | 3. 9602 | 4. 2709
-# Cluster centers: 1. 244063664 | 2. 4955208900 | 3. 16425619899 | 4. 55324774302
+# Cluster Size: 1. 287737 | 2. 78847 | 3. 27687
+# Cluster centers: 1. 3.137792 | 2. 7.885030 | 3. 37.624167 | 4. 55324774302
 ## Visualise the clusters
 par(mfrow=c(1,2))
 plot(df$clv,col=(km$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
 abline(h = km$centers, col = 1:2, pch = 8,cex = 2)
 ## Analyse within-cluster sum of squares & total within-cluster sum of squares
-km$withinss ## [1] 6.833492e+22 5.642723e+22 9.335332e+22 1.686347e+19
-km$tot.withinss ## [1] 2.181323e+23
+km$withinss ## [1] 460984.1  854637.4 3751597.6
+km$tot.withinss ## [1] 5067219
 
 ## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
 ## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
 # ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
 library(Ckmeans.1d.dp)
 set.seed(2014)
-ckm <- Ckmeans.1d.dp(df$clv, 4) ## Not required to specify nstart since it will auto-optimise
+ckm <- Ckmeans.1d.dp(df$clv, 3) ## Not required to specify nstart since it will auto-optimise
 ckm
-# Cluster Size: 1. 358032 | 2. 24865 | 3. 8665 | 4. 2709
-# Cluster centers: 1. 248945129 | 2. 5242455908 | 3. 17023857173 | 4. 55324774302
+# Cluster Size: 1. 364207 | 2. 22456 | 3. 7608
+# Cluster centers: 1. 4.052515 | 2. 29.905174 | 3. 55.042750
 # Slight difference from above km$centers
 ## Visualise the clusters
 par(mfrow=c(1,2))
 plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
 abline(h = ckm$centers, col = 1:2, pch = 8,cex = 2)
-ckm$withinss ## [1] 7.265291e+22 8.388719e+22 6.157451e+22 1.686347e+19
-ckm$tot.withinss ## [1] 2.181315e+23
+ckm$withinss ## [1] 2071400.31  759478.47   50486.51
+ckm$tot.withinss ## [1] 2881365
 # Total within-cluster sum of squares is the same
 # Individual within-cluster sum of squares differs
-
-km
-ckm
-
-
-
-df$cluster = factor(km$cluster)
+## Parse the cluster coefficients back to original dataframe
+df$cluster = factor(ckm$cluster)
 summary(df$cluster)
 
-for (k in 1:10) {
-  test = kmeans(df$clv,centers=k,nstart=25)
-  print(test$tot.withinss)
-}
 
-
-###########################################################################################################
-
-
-
-
-
-
-
-
-
-
-## Parse the cluster coefficients back to original dataframe
-
-
-## Predicting CLV cluster with Logistic Regression
-library(nnet)
 ## Train-Test Split
 generateTrainTest(df,0.7)
 summary(train)
 summary(test)
 
-logreg <- multinom(cluster~ Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train)
+
+## Logistic Regression: Original Trainset -----------------------------------------------------
+library(nnet)
+logreg <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train)
 summary(logreg)
 
 ## Odds Ratio
-OR.DelStatus <- exp(coef(logreg))
-OR.DelStatus
+OR.logreg <- exp(coef(logreg))
+OR.logreg
 
 # 95% Confidence interval
-OR.DelStatus.CI <- exp(confint(logreg))
-OR.DelStatus.CI
+OR.logreg.CI <- exp(confint(logreg))
+OR.logreg.CI
+
+# p-value
+z <- summary(logreg)$coefficients/summary(logreg)$standard.errors
+pvalue <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
+pvalue
+
+
+logreg.step <- step(logreg)
+logreg.step
 
 ## Predict on trainset
-train.logreg.predict <- predict(logreg, newdata=train, type="class")
-results.train <- data.frame(train$cluster,train.logreg.predict)
-results.train
-accuracy.train <- mean(results.train$train.cluster == results.train$train.logreg.predict)
-accuracy.train
+predict.cluster.train <- predict(logreg.step)
+predict.cluster.train
+
+logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = predict.cluster.train, deparse.level = 2)
+logreg.cm.train
+
+accuracy.logreg.train <- mean(predict.cluster.train == train$cluster)
+accuracy.logreg.train
 
 ## Predict on testset
-test.logreg.predict <- predict(logreg, newdata=test, type="class")
-results.test <- data.frame(test$cluster,test.logreg.predict)
-results.test
-accuracy.test <- mean(results.test$test.cluster ==results$test.logreg.predict)
-accuracy.test
+predict.cluster.test <- predict(logreg.step, newdata=test)
+predict.cluster.test
 
-## Accuracy
-accuracy <- data.frame(accuracy.train,accuracy.test)
-print(accuracy)
+logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test, deparse.level = 2)
+logreg.cm.test
 
-## Confusion Matrix
-cm <- table(test$cluster,test.logreg.predict,deparse.level=2)
-cm
+accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
+accuracy.logreg.test
 
-'
-## Calculation of accuracy, precision, recall (WITH REGARDS TO OBSERVATIONS OF LATE DELIVERY)
-LogReg.accuracy <- (LogReg.Confusion.matrix[1,1]+LogReg.Confusion.matrix[2,2]+
-                      LogReg.Confusion.matrix[3,3]+LogReg.Confusion.matrix[4,4])/sum(LogReg.Confusion.matrix)
-LogReg.precision <- LogReg.Confusion.matrix[3,3]/sum(LogReg.Confusion.matrix[c(1:4),3])
-LogReg.recall <- LogReg.Confusion.matrix[3,3]/sum(LogReg.Confusion.matrix[3,c(1:4)])
+## MARS -----------------------------------------------------
+library(earth)
+mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=1,data=train)
+summary(mars)
+mars.predict <- predict(mars,newdata=test)
+mars.predict
+RMSE.mars <- round(sqrt(mean((df$clv_normalized-mars.predict)^2))) ## Error
+RMSE.mars ## ????
+varimpt <- evimp(mars)
+print(varimpt)
 
-c(LogReg.accuracy, LogReg.precision, LogReg.recall)
-'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
+# Create balanced trainset  --------------------------------
+# Random sample from majority class Default = No and combine with Default = Yes to form new trainset
+majority <- train[cluster == 1]
+middle <- train[cluster == 2]
+minority <- train[cluster == 3] 
+# Randomly sample the row numbers to be in trainset. Same sample size as minority cases. 
+chosen <- sample(seq(1:nrow(majority)), size = nrow(minority)) 
+chosen2 <- sample(seq(1:nrow(middle)), size = nrow(minority))
+# Subset the original trainset based on randomly chosen row numbers. 
+majority.chosen <- majority[chosen] 
+middle.chosen <- middle[chosen2]
+# Combine two data tables by appending the rows 
+train.bal <- rbind(majority.chosen,middle.chosen, minority) 
+summary(train.bal) 
+
+## Logistic Regression: Balanced Trainset -----------------------------------------------------
+library(nnet)
+logreg.bal <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train.bal)
+summary(logreg.bal)
+
+## Odds Ratio
+OR.logreg.bal <- exp(coef(logreg.bal))
+OR.logreg.bal
+
+# 95% Confidence interval
+OR.logreg.CI.bal <- exp(confint(logreg.bal))
+OR.logreg.CI.bal
+
+# p-value
+z <- summary(logreg.bal)$coefficients/summary(logreg.bal)$standard.errors
+pvalue <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
+pvalue
+
+logreg.step.bal <- step(logreg.bal)
+logreg.step.bal
+
+## Predict on trainset
+predict.cluster.train.bal <- predict(logreg.step.bal)
+predict.cluster.train.bal
+
+logreg.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = predict.cluster.train.bal, deparse.level = 2)
+logreg.cm.train.bal
+
+accuracy.logreg.train.bal <- mean(predict.cluster.train.bal == train.bal$cluster)
+accuracy.logreg.train.bal ## [1] 0.3980165
+
+## Predict on testset
+predict.cluster.test.bal <- predict(logreg.step.bal, newdata=test)
+predict.cluster.test.bal
+
+logreg.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test.bal, deparse.level = 2)
+logreg.cm.test.bal
+
+accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
+accuracy.logreg.test.bal ## [1] 0.670736
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## MARS
 library(earth)
@@ -233,74 +305,3 @@ print(varimpt)
 
 '
 '
-
-
-
-
-
-
-
-
-
-## Random Forest
-library(randomForest)
-rf <- randomForest(cluster~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train, importance=T)
-rf
-
-## OOB MSE = 1611604542 ==> OOB RMSE = $40,145
-
-plot(m.RF1)
-## Confirms error stablised before 500 trees.
-
-m.RF1.yhat <- predict(m.RF1, newdata = testset)
-
-RMSE.test.RF1 <- round(sqrt(mean((testset$resale_price - m.RF1.yhat)^2)))
-
-var.impt.RF <- importance(m.RF1)
-
-varImpPlot(m.RF1, type = 1)
-
-'
-
-
-'
-B <- c(25, 25, 25, 100, 100, 100, 500, 500, 500)
-
-# Num of X variables in dataset
-m <- ncol(heart.df)-1
-
-RSF <- rep.int(c(1, floor(sqrt(m)), m), times=3)
-
-OOB.error <- seq(1:9)
-
-set.seed(1)  # for Bootstrap sampling & RSF selection.
-
-for (i in 1:length(B)) {
-  m.RF <- randomForest(AHD ~ . , data = heart.df,
-                       mtry = RSF[i],
-                       ntree = B[i],
-                       na.action = na.omit)
-  OOB.error[i] <- m.RF$err.rate[m.RF$ntree, 1]
-}
-## OOB Error across all trees stored in the last row in err.rate.
-
-results <- data.frame(B, RSF, OOB.error)
-## trying different seeds, OOB error is relatively low for B = 500, RSF = 3.
-## these are default values in randomForest() function.
-
-m.RF.final <- randomForest(AHD ~ . , data = heart.df, na.action = na.omit, importance = T)
-
-m.RF.final  ## Confirms defaults are B = 500, RSF = int(sqrt(m)) = 3
-
-var.impt <- importance(m.RF.final)
-
-varImpPlot(m.RF.final, type = 1)
-
-'
-
-
-
-
-
-
-
