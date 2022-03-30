@@ -31,25 +31,83 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY*df$MONEY*(df$`NEW RECENCY`/60/24)
-df$clv_normalized <- (df$clv-min(df$clv))/(max(df$clv)-min(df$clv))
 
 ## Clustering
-## Clustering to create 3 segments
+## K-Means Clustering to create 3 segments
 library(factoextra)
 library(cluster)
 library(dplyr)
-## Subset the cluster to remove all categorical variables
+library(tidyverse)
+
+## Find out optimal number of clusters using elbow method
+tot_withinss <- map_dbl(1:10,  function(k){
+  model <- kmeans(x = df$clv, centers = k,nstart=25)
+  model$tot.withinss
+})
+
+elbow_df <- data.frame(
+  k = 1:10,
+  tot_withinss = tot_withinss
+)
+
+ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
+  geom_line() + geom_point()+
+  scale_x_continuous(breaks = 1:10)
+
+## Optimal Clusters is at the elbow, so clusters 3 or 4 
+## https://hastie.su.domains/ISLR2/ISLRv2_website.pdf
+# https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
+## To minimise within-cluster sum of squares using the nstart function
+## Recommend to use 20 or 50 for nstart otherwise an undesirable local optimum may be obtained
 set.seed(2014)
-cluster <- select(df,clv)
-#https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
-kmCenters <- kmeans(cluster,centers=3,nstart=25)$centers
+kmCenters <- kmeans(df$clv,centers=4,nstart=25)$centers
 kmCenters = sort(kmCenters)
-km = kmeans(cluster,centers=kmCenters,nstart=25)
+km = kmeans(df$clv,centers=kmCenters,nstart=25)
 km
+# Cluster Size: 1. 357326 | 2. 24634 | 3. 9602 | 4. 2709
+# Cluster centers: 1. 244063664 | 2. 4955208900 | 3. 16425619899 | 4. 55324774302
+## Visualise the clusters
+par(mfrow=c(1,2))
+plot(df$clv,col=(km$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
+abline(h = km$centers, col = 1:2, pch = 8,cex = 2)
+## Analyse within-cluster sum of squares & total within-cluster sum of squares
+km$withinss ## [1] 6.833492e+22 5.642723e+22 9.335332e+22 1.686347e+19
+km$tot.withinss ## [1] 2.181323e+23
+
+## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
+## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
+# ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
+library(Ckmeans.1d.dp)
+set.seed(2014)
+ckm <- Ckmeans.1d.dp(df$clv, 4) ## Not required to specify nstart since it will auto-optimise
+ckm
+# Cluster Size: 1. 358032 | 2. 24865 | 3. 8665 | 4. 2709
+# Cluster centers: 1. 248945129 | 2. 5242455908 | 3. 17023857173 | 4. 55324774302
+# Slight difference from above km$centers
+## Visualise the clusters
+par(mfrow=c(1,2))
+plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
+abline(h = ckm$centers, col = 1:2, pch = 8,cex = 2)
+ckm$withinss ## [1] 7.265291e+22 8.388719e+22 6.157451e+22 1.686347e+19
+ckm$tot.withinss ## [1] 2.181315e+23
+# Total within-cluster sum of squares is the same
+# Individual within-cluster sum of squares differs
+
+km
+ckm
+
+
+
 df$cluster = factor(km$cluster)
 summary(df$cluster)
 
-#############################################################################################################
+for (k in 1:10) {
+  test = kmeans(df$clv,centers=k,nstart=25)
+  print(test$tot.withinss)
+}
+
+
+###########################################################################################################
 
 
 
