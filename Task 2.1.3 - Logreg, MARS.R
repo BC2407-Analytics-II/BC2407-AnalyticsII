@@ -148,11 +148,21 @@ accuracy.logreg.test
 
 ## MARS -----------------------------------------------------
 library(earth)
-mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=1,data=train)
+set.seed(2014)
+mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=2,data=train)
 summary(mars)
+mars.predict <- predict(mars)
+mars.predict
+df1 <- as.data.frame(mars.predict)
+View(df1)
+
+?earth
+
+
+
 mars.predict <- predict(mars,newdata=test)
 mars.predict
-RMSE.mars <- round(sqrt(mean((df$clv_normalized-mars.predict)^2))) ## Error
+RMSE.mars <- round(sqrt(mean((df$cluster-mars.predict)^2))) ## Error
 RMSE.mars ## ????
 varimpt <- evimp(mars)
 print(varimpt)
@@ -191,7 +201,7 @@ train.bal <- rbind(majority.chosen,middle.chosen, minority)
 summary(train.bal) 
 
 ## Logistic Regression: Balanced Trainset -----------------------------------------------------
-library(nnet)
+set.seed(2014)
 logreg.bal <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train.bal)
 summary(logreg.bal)
 
@@ -219,7 +229,7 @@ logreg.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Pred
 logreg.cm.train.bal
 
 accuracy.logreg.train.bal <- mean(predict.cluster.train.bal == train.bal$cluster)
-accuracy.logreg.train.bal ## [1] 0.3980165
+accuracy.logreg.train.bal ## [1] 0.3929632
 
 ## Predict on testset
 predict.cluster.test.bal <- predict(logreg.step.bal, newdata=test)
@@ -229,7 +239,7 @@ logreg.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction`
 logreg.cm.test.bal
 
 accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
-accuracy.logreg.test.bal ## [1] 0.670736
+accuracy.logreg.test.bal ## [1] 0.6791143
 
 
 
@@ -244,21 +254,6 @@ accuracy.logreg.test.bal ## [1] 0.670736
 
 
 
-## MARS
-library(earth)
-mars <- earth(clv_normalized~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations,degree=1,data=train)
-summary(mars)
-mars.predict <- predict(mars,newdata=test)
-mars.predict
-RMSE.mars <- round(sqrt(mean((df$clv_normalized-mars.predict)^2))) ## Error
-RMSE.mars ## ????
-varimpt <- evimp(mars)
-print(varimpt)
-
-## Random Forest
-library(randomForest)
-rf <- randomForest(cluster~Quantity+InvoiceDate+UnitPrice+Country+ProductVariations, data=train, importance=T)
-rf
 
 
 
