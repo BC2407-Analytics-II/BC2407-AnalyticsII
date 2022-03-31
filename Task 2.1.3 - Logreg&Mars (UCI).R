@@ -1,8 +1,15 @@
-## 2.1.3.
-
+## 2.1.3. UCI
+## Libraries Used -----------------------------------------------------
 library(randomForest)
 library(data.table)
 library(readxl)
+library(earth)
+library(factoextra)
+library(cluster)
+library(dplyr)
+library(tidyverse)
+library(Ckmeans.1d.dp)
+library(nnet)
 
 tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
     paste('Directory is:', getwd())                                     # the 'Data' folder in the
@@ -34,13 +41,8 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
 
-## Clustering -----------------------------------------------------
+## Clustering (UCI) -----------------------------------------------------
 # K-Means Clustering to create 3 segments
-library(factoextra)
-library(cluster)
-library(dplyr)
-library(tidyverse)
-
 ## Find out optimal number of clusters using elbow method
 tot_withinss <- map_dbl(1:10,  function(k){
   model <- kmeans(x = df$clv, centers = k,nstart=25)
@@ -79,7 +81,6 @@ km$tot.withinss ## [1] 5067219
 ## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
 ## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
 # ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
-library(Ckmeans.1d.dp)
 set.seed(2014)
 ckm <- Ckmeans.1d.dp(df$clv, 3) ## Not required to specify nstart since it will auto-optimise
 ckm
@@ -99,14 +100,13 @@ df$cluster = factor(ckm$cluster)
 summary(df$cluster)
 
 
-## Train-Test Split
+## Generate Train-Test (UCI) -----------------------------------------------------
 generateTrainTest(df,0.7)
 summary(train)
 summary(test)
 
 
-## Logistic Regression: Original Trainset -----------------------------------------------------
-library(nnet)
+## Logistic Regression: Original Trainset (UCI) -----------------------------------------------------
 logreg <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train)
 summary(logreg)
 
@@ -127,7 +127,7 @@ pvalue
 logreg.step <- step(logreg)
 logreg.step
 
-## Predict on trainset
+## Logistic Regression: Predict on Testset (UCI) -----------------------------------------------------
 predict.cluster.train <- predict(logreg.step)
 predict.cluster.train
 
@@ -147,30 +147,45 @@ logreg.cm.test
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
 accuracy.logreg.test
 
-## MARS: Original Trainset -----------------------------------------------------
-library(earth)
+## MARS: Original Trainset (UCI) -----------------------------------------------------
 set.seed(2014)
 mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=2,data=train)
 summary(mars)
-mars.predict <- predict(mars)
-mars.predict
-df1 <- as.data.frame(mars.predict)
-View(df1)
+mars.predict.train <- predict(mars)
+mars.predict.train
+mars.predict.train <- as.data.frame(mars.predict.train)
+mars.predict.train$`predicted cluster` <- ifelse(mars.predict.train$`1`>mars.predict.train$`2` & mars.predict.train$`1`>mars.predict.train$`3`,"1",
+                    ifelse(mars.predict.train$`2`>mars.predict.train$`1` & mars.predict.train$`2`>mars.predict.train$`3`,"2",
+                           ifelse(mars.predict.train$`3`>mars.predict.train$`1` & mars.predict.train$`3`>mars.predict.train$`2`,"3","NA")))
 
-?earth
+mars.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = mars.predict.train$`predicted cluster`, deparse.level = 2)
+mars.cm.train
 
+accuracy.mars.train <- mean(mars.predict.train$`predicted cluster` == train$cluster)
+accuracy.mars.train
 
-
-mars.predict <- predict(mars,newdata=test)
-mars.predict
-RMSE.mars <- round(sqrt(mean((df$cluster-mars.predict)^2))) ## Error
-RMSE.mars ## ????
 varimpt <- evimp(mars)
 print(varimpt)
 
+## MARS: Predict on Testset (UCI) -----------------------------------------------------
+mars.predict.test <- predict(mars, newdata=test)
+mars.predict.test
+mars.predict.test <- as.data.frame(mars.predict.test)
+mars.predict.test$`predicted cluster` <- ifelse(mars.predict.test$`1`>mars.predict.test$`2` & mars.predict.test$`1`>mars.predict.test$`3`,"1",
+                                           ifelse(mars.predict.test$`2`>mars.predict.test$`1` & mars.predict.test$`2`>mars.predict.test$`3`,"2",
+                                                  ifelse(mars.predict.test$`3`>mars.predict.test$`1` & mars.predict.test$`3`>mars.predict.test$`2`,"3","NA")))
+
+mars.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = mars.predict.test$`predicted cluster`, deparse.level = 2)
+mars.cm.test
+
+accuracy.mars.test<- mean(mars.predict.test$`predicted cluster` == test$cluster)
+accuracy.mars.test
+
+varimpt <- evimp(mars)
+print(varimpt)
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
-# Create balanced trainset  --------------------------------
+# Create balanced trainset for UCI  --------------------------------
 # Random sample from majority class Default = No and combine with Default = Yes to form new trainset
 majority <- train[cluster == 1]
 middle <- train[cluster == 2]
@@ -228,78 +243,50 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 
 ## MARS: Balanced Trainset -----------------------------------------------------
-
-
-
-
-
-
-
-
-## Olist Dataset -----------------------------------------------------
-df1 <- fread("Orders_merged_CLV.csv")
-summary(df1)
-## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
-df1$clv <- df1$FREQUENCY_normalised*df1$MONEY_normalised*df1$RECENCY_normalised
-
-## Clustering -----------------------------------------------------
-# K-Means Clustering to create 3 segments
-## Find out optimal number of clusters using elbow method
-tot_withinss1 <- map_dbl(1:10,  function(k){
-  model <- kmeans(x = df1$clv, centers = k,nstart=25)
-  model$tot.withinss
-})
-
-elbow_df1 <- data.frame(
-  k = 1:10,
-  tot_withinss1 = tot_withinss1
-)
-
-ggplot(elbow_df1, aes(x = k, y = tot_withinss1)) +
-  geom_line() + geom_point()+
-  scale_x_continuous(breaks = 1:10)
-
-## Optimal Clusters is at the elbow, so clusters 3 or 4 
-## https://hastie.su.domains/ISLR2/ISLRv2_website.pdf
-# https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
-## To minimise within-cluster sum of squares using the nstart function
-## Recommend to use 20-50 for nstart otherwise an undesirable local optimum may be obtained
 set.seed(2014)
-kmCenters1 <- kmeans(df1$clv,centers=3,nstart=25)$centers
-kmCenters1 = sort(kmCenters1)
-km1 = kmeans(df1$clv,centers=kmCenters1,nstart=25)
-km1
-# Cluster Size: 1. 94327 | 2. 12766 | 3. 730
-# Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
-## Visualise the clusters
-par(mfrow=c(1,2))
-plot(df1$clv,col=(km1$cluster+1),main = "K-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
-abline(h = km1$centers, col = 1:2, pch = 8,cex = 2)
-## Analyse within-cluster sum of squares & total within-cluster sum of squares
-km1$withinss ## [1] 1159.946 1326.407 1372.275
-km1$tot.withinss ## [1] 3858.628
+mars.bal <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=1,data=train.bal)
+summary(mars.bal)
+mars.predict.train.bal <- predict(mars.bal)
+mars.predict.train.bal
+mars.predict.train.bal <- as.data.frame(mars.predict.train.bal)
+mars.predict.train.bal$`predicted cluster` <- ifelse(mars.predict.train.bal$`1`>mars.predict.train.bal$`2` & mars.predict.train.bal$`1`>mars.predict.train.bal$`3`,"1",
+                                                 ifelse(mars.predict.train.bal$`2`>mars.predict.train.bal$`1` & mars.predict.train.bal$`2`>mars.predict.train.bal$`3`,"2",
+                                                        ifelse(mars.predict.train.bal$`3`>mars.predict.train.bal$`1` & mars.predict.train.bal$`3`>mars.predict.train.bal$`2`,"3","NA")))
 
-## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
-## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
-# ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
-set.seed(2014)
-ckm1 <- Ckmeans.1d.dp(df1$clv, 3) ## Not required to specify nstart since it will auto-optimise
-ckm1
-ckm1$size
-# Cluster Size: 1. 94327 | 2. 12766 | 3. 730
-# Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
-# Slight difference from above km$centers
-## Visualise the clusters
-par(mfrow=c(1,2))
-plot(df1$clv,col=(ckm1$cluster+1),main = "CK-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
-abline(h = ckm1$centers, col = 1:2, pch = 8,cex = 2)
-ckm1$withinss ## [1] 1159.946 1326.407 1372.275
-ckm1$tot.withinss ## [1] 3858.628
-# Total within-cluster sum of squares is the same
-# Individual within-cluster sum of squares is the same as well
-## Parse the cluster coefficients back to original dataframe
-df1$cluster = factor(ckm1$cluster)
-summary(df1$cluster)
+mars.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = mars.predict.train.bal$`predicted cluster`, deparse.level = 2)
+mars.cm.train.bal
+
+accuracy.mars.train.bal <- mean(mars.predict.train.bal$`predicted cluster` == train.bal$cluster)
+accuracy.mars.train.bal
+
+varimpt <- evimp(mars.bal)
+print(varimpt)
+
+## MARS: Predict on Testset (UCI) -----------------------------------------------------
+mars.predict.test.bal <- predict(mars.bal, newdata=test)
+mars.predict.test.bal
+mars.predict.test.bal <- as.data.frame(mars.predict.test.bal)
+mars.predict.test.bal$`predicted cluster` <- ifelse(mars.predict.test.bal$`1`>mars.predict.test.bal$`2` & mars.predict.test.bal$`1`>mars.predict.test.bal$`3`,"1",
+                                                ifelse(mars.predict.test.bal$`2`>mars.predict.test.bal$`1` & mars.predict.test.bal$`2`>mars.predict.test.bal$`3`,"2",
+                                                       ifelse(mars.predict.test.bal$`3`>mars.predict.test.bal$`1` & mars.predict.test.bal$`3`>mars.predict.test.bal$`2`,"3","NA")))
+
+mars.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = mars.predict.test.bal$`predicted cluster`, deparse.level = 2)
+mars.cm.test.bal
+
+accuracy.mars.test.bal <- mean(mars.predict.test.bal$`predicted cluster` == test$cluster)
+accuracy.mars.test.bal 
+
+varimpt <- evimp(mars.bal)
+print(varimpt)
+
+## Degree 2 has higher accuracy for train, lower accuracy for test
+## Degree 1 has higher accuracy for test, lower accuracy for train
+
+
+
+
+
+
 
 
 
