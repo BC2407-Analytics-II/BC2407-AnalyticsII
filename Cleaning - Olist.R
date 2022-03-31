@@ -1,13 +1,16 @@
-setwd(paste(getwd(),'/Data',sep=""))
-orders <- read.csv("olist_orders_dataset.csv",header = T)
-customers <- read.csv("olist_customers_dataset.csv",header = T)
-order_reviews <- read.csv("olist_order_reviews_dataset.csv",header = T)
-order_payments <- read.csv("olist_order_payments_dataset.csv",header = T)
-order_items_details <- read.csv("olist_order_items_dataset.csv",header = T)
-sellers <- read.csv("olist_sellers_dataset.csv",header = T)
-geolocation <- read.csv("olist_geolocation_dataset.csv",header = T)
-products <- read.csv("olist_products_dataset.csv",header = T)
-products_translation <- read.csv("olist_product_category_name_translation.csv",header = T, fileEncoding="UTF-8-BOM")
+tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
+    paste('Directory is:', getwd())                                     # the 'Data' folder in the
+})                                                                      # group project.
+
+orders <- read.csv("Raw Data/olist_orders_dataset.csv",header = T)
+customers <- read.csv("Raw Data/olist_customers_dataset.csv",header = T)
+order_reviews <- read.csv("Raw Data/olist_order_reviews_dataset.csv",header = T)
+order_payments <- read.csv("Raw Data/olist_order_payments_dataset.csv",header = T)
+order_items_details <- read.csv("Raw Data/olist_order_items_dataset.csv",header = T)
+sellers <- read.csv("Raw Data/olist_sellers_dataset.csv",header = T)
+geolocation <- read.csv("Raw Data/olist_geolocation_dataset.csv",header = T)
+products <- read.csv("Raw Data/olist_products_dataset.csv",header = T)
+products_translation <- read.csv("Raw Data/olist_product_category_name_translation.csv",header = T, fileEncoding="UTF-8-BOM")
 #names(products_translation)[names(products_translation) == "product_category_name_portugese"] <- 'product_category_name'
 
 ####Data preparation####

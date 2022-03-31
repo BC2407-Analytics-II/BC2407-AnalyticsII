@@ -4,9 +4,11 @@ library(randomForest)
 library(data.table)
 library(readxl)
 
-setwd(paste(getwd(),'/Data',sep=""))
+tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
+    paste('Directory is:', getwd())                                     # the 'Data' folder in the
+})                                                                      # group project.
 
-source("../helperFns.R")
+source("../helperFns.R")    # import list of helper functions we've written separately
 
 df <- fread("uci_online_retail_cleaned_CLV.csv")
 #View(df)
@@ -18,7 +20,8 @@ df$StockCode <- factor(df$StockCode)
 df$CustomerID <- factor(df$CustomerID)
 df$Description <- factor(df$Description)
 df$Country <- factor(df$Country)
-df$InvoiceDate <- as.POSIXct(df$InvoiceDate,format="%Y-%m-%d %H:%M:%S",tz="	Europe/London")
+
+df$InvoiceDate <- as.POSIXct(df$InvoiceDate,format="%Y-%m-%d %H:%M:%S",tz="Europe/London")
 df$InvoiceDate_DayofWeek = factor(weekdays(df$InvoiceDate))
 df$InvoiceDate_DayofMonth = as.numeric(format(df$InvoiceDate, format = "%d"))
 df$InvoiceDate_MonthPeriod = cut(df$InvoiceDate_DayofMonth, breaks=c(0,10,20,31), labels=c("Beginning of Month", "Middle of Month", "End of Month"))

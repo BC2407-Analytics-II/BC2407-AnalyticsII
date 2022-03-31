@@ -2,11 +2,11 @@ library(dplyr)
 library(quantreg)
 library(lubridate)
 
-setwd(paste(getwd(),'/Data',sep="")) 
-#set working directory to the dataset folder (works locally on every computer)
+tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
+    paste('Directory is:', getwd())                                     # the 'Data' folder in the
+})                                                                      # group project.
 
-source("../helperFns.R") 
-#import the helper functions
+source("../helperFns.R")    # import list of helper functions we've written separately
 
 orders_all <- read.csv("Orders_merged.csv")
 orders_all$order_purchase_timestamp <-
