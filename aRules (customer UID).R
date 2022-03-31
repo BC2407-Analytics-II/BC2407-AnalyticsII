@@ -2,20 +2,35 @@ setwd(paste(getwd(),'/Data',sep=""))
 library(arules)
 library(tidyr)
 library(dplyr)
+library(mondate)
 
 data <- read.csv('Orders_merged.csv')
-data$customer_unique_id = as.factor(data$customer_unique_id)
+
+data$order_purchase_timestamp <-
+  as.POSIXct(data$order_purchase_timestamp,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+data$order_delivered_customer_date<-
+  as.POSIXct(data$order_delivered_customer_date,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+data$order_approved_at<-
+  as.POSIXct(data$order_approved_at,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+data$order_estimated_delivery_date<-
+  as.POSIXct(data$order_estimated_delivery_date,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+
+data$'year/quarter' <- paste(format(data$order_purchase_timestamp, "%y/"), 0, 
+      sub( "Q", "", quarters(data$order_purchase_timestamp) ), sep = "")
+data$'customerUID_year/quarter' <- paste(data$customer_unique_id, as.character(data$'year/quarter'), sep = "-")
+data$customer_unique_id <- as.factor(data$customer_unique_id)
+data$'customerUID_year/quarter' <- as.factor(data$'customerUID_year/quarter')
 
 #####################################################################################
-# 1 customer 1 basket - items -> categories (18 rules)
+# 1 customer (within same quarter) 1 basket - items -> categories (6 rules)
 
 # dataframe with customer UID and product category
-customerUID_productCat_long <- data[c('customer_unique_id','product_category_name_english')]
+customerUID_productCat_long <- data[c('customerUID_year/quarter','product_category_name_english')]
 customerUID_productCat_long$product_category_name_english <- as.factor(customerUID_productCat_long$product_category_name_english)
 
 # convert to wide format
 customerUID_productCat_wide <- customerUID_productCat_long %>%
-  select(customer_unique_id, product_category_name_english) %>%
+  select(`customerUID_year/quarter`, product_category_name_english) %>% 
   distinct() %>%
   mutate(value = 1) %>%
   spread(product_category_name_english, value, fill = 0)
@@ -67,10 +82,10 @@ seller_subRules<-seller_rules[quality(seller_rules)$lift > 1] # get those with l
 seller_subRules.df <- as(seller_subRules, "data.frame")
 
 #####################################################################################
-# 1 customer 1 basket - items (31 rules)
+# 1 customer (within same quarter) 1 basket - items (29 rules)
 
 # dataframe with customer UID and product ID
-customerUID_productID_long <- data[c('customer_unique_id','product_id')]
+customerUID_productID_long <- data[c('customerUID_year/quarter','product_id')]
 customerUID_productID_long$product_id <- as.factor(customerUID_productID_long$product_id)
 
 # convert to transaction object
@@ -88,3 +103,4 @@ inspect(product_rules)
 product_rules.df <- as(product_rules, "data.frame")
 product_subRules<-product_rules[quality(product_rules)$lift > 1] # get those with lift > 1 
 product_subRules.df <- as(product_subRules, "data.frame")
+
