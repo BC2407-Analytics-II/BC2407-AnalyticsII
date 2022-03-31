@@ -10,6 +10,7 @@ tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set wo
 
 source("../helperFns.R")    # import list of helper functions we've written separately
 
+## UCI Dataset -----------------------------------------------------
 df <- fread("uci_online_retail_cleaned_CLV.csv")
 #View(df)
 
@@ -59,17 +60,17 @@ ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
 ## https://hastie.su.domains/ISLR2/ISLRv2_website.pdf
 # https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
 ## To minimise within-cluster sum of squares using the nstart function
-## Recommend to use 20 or 50 for nstart otherwise an undesirable local optimum may be obtained
+## Recommend to use 20-50 for nstart otherwise an undesirable local optimum may be obtained
 set.seed(2014)
 kmCenters <- kmeans(df$clv,centers=3,nstart=25)$centers
 kmCenters = sort(kmCenters)
 km = kmeans(df$clv,centers=kmCenters,nstart=25)
 km
 # Cluster Size: 1. 287737 | 2. 78847 | 3. 27687
-# Cluster centers: 1. 3.137792 | 2. 7.885030 | 3. 37.624167 | 4. 55324774302
+# Cluster centers: 1. 3.137792 | 2. 7.885030 | 3. 37.624167
 ## Visualise the clusters
 par(mfrow=c(1,2))
-plot(df$clv,col=(km$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
+plot(df$clv,col=(km$cluster+1),main = "K-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
 abline(h = km$centers, col = 1:2, pch = 8,cex = 2)
 ## Analyse within-cluster sum of squares & total within-cluster sum of squares
 km$withinss ## [1] 460984.1  854637.4 3751597.6
@@ -87,7 +88,7 @@ ckm
 # Slight difference from above km$centers
 ## Visualise the clusters
 par(mfrow=c(1,2))
-plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results with K=4",xlab = "",ylab="",pch=20,cex=2)
+plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
 abline(h = ckm$centers, col = 1:2, pch = 8,cex = 2)
 ckm$withinss ## [1] 2071400.31  759478.47   50486.51
 ckm$tot.withinss ## [1] 2881365
@@ -146,7 +147,7 @@ logreg.cm.test
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
 accuracy.logreg.test
 
-## MARS -----------------------------------------------------
+## MARS: Original Trainset -----------------------------------------------------
 library(earth)
 set.seed(2014)
 mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=2,data=train)
@@ -166,22 +167,6 @@ RMSE.mars <- round(sqrt(mean((df$cluster-mars.predict)^2))) ## Error
 RMSE.mars ## ????
 varimpt <- evimp(mars)
 print(varimpt)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
@@ -242,6 +227,7 @@ accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
 accuracy.logreg.test.bal ## [1] 0.6791143
 
 
+## MARS: Balanced Trainset -----------------------------------------------------
 
 
 
@@ -250,56 +236,71 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 
 
+## Olist Dataset -----------------------------------------------------
+df1 <- fread("Orders_merged_CLV.csv")
+summary(df1)
+## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
+df1$clv <- df1$FREQUENCY_normalised*df1$MONEY_normalised*df1$RECENCY_normalised
+
+## Clustering -----------------------------------------------------
+# K-Means Clustering to create 3 segments
+## Find out optimal number of clusters using elbow method
+tot_withinss1 <- map_dbl(1:10,  function(k){
+  model <- kmeans(x = df1$clv, centers = k,nstart=25)
+  model$tot.withinss
+})
+
+elbow_df1 <- data.frame(
+  k = 1:10,
+  tot_withinss1 = tot_withinss1
+)
+
+ggplot(elbow_df1, aes(x = k, y = tot_withinss1)) +
+  geom_line() + geom_point()+
+  scale_x_continuous(breaks = 1:10)
+
+## Optimal Clusters is at the elbow, so clusters 3 or 4 
+## https://hastie.su.domains/ISLR2/ISLRv2_website.pdf
+# https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r
+## To minimise within-cluster sum of squares using the nstart function
+## Recommend to use 20-50 for nstart otherwise an undesirable local optimum may be obtained
+set.seed(2014)
+kmCenters1 <- kmeans(df1$clv,centers=3,nstart=25)$centers
+kmCenters1 = sort(kmCenters1)
+km1 = kmeans(df1$clv,centers=kmCenters1,nstart=25)
+km1
+# Cluster Size: 1. 94327 | 2. 12766 | 3. 730
+# Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
+## Visualise the clusters
+par(mfrow=c(1,2))
+plot(df1$clv,col=(km1$cluster+1),main = "K-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
+abline(h = km1$centers, col = 1:2, pch = 8,cex = 2)
+## Analyse within-cluster sum of squares & total within-cluster sum of squares
+km1$withinss ## [1] 1159.946 1326.407 1372.275
+km1$tot.withinss ## [1] 3858.628
+
+## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
+## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
+# ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
+set.seed(2014)
+ckm1 <- Ckmeans.1d.dp(df1$clv, 3) ## Not required to specify nstart since it will auto-optimise
+ckm1
+ckm1$size
+# Cluster Size: 1. 94327 | 2. 12766 | 3. 730
+# Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
+# Slight difference from above km$centers
+## Visualise the clusters
+par(mfrow=c(1,2))
+plot(df1$clv,col=(ckm1$cluster+1),main = "CK-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
+abline(h = ckm1$centers, col = 1:2, pch = 8,cex = 2)
+ckm1$withinss ## [1] 1159.946 1326.407 1372.275
+ckm1$tot.withinss ## [1] 3858.628
+# Total within-cluster sum of squares is the same
+# Individual within-cluster sum of squares is the same as well
+## Parse the cluster coefficients back to original dataframe
+df1$cluster = factor(ckm1$cluster)
+summary(df1$cluster)
 
 
 
 
-
-
-
-'
-
-# MARS on the 4 main variables degree 1 ----------------------------------------------
-m.mars1 <- earth(resale_price ~ 
-                   floor_area_sqm + 
-                   remaining_lease_years + 
-                   town + 
-                   storey_range , degree=1, data=data1)
-
-summary(m.mars1)
-
-m.mars1.yhat <- predict(m.mars1)
-
-RMSE.mars1 <- round(sqrt(mean((data1$resale_price - m.mars1.yhat)^2)))
-
-
-m.mars2 <- earth(resale_price ~ 
-                   floor_area_sqm + 
-                   remaining_lease_years + 
-                   town + 
-                   storey_range , degree=2, data=data1)
-
-summary(m.mars2)
-
-m.mars2.yhat <- predict(m.mars2)
-
-RMSE.mars2 <- round(sqrt(mean((data1$resale_price - m.mars2.yhat)^2)))
-
-# MARS Prediction for Flat in Clementi, 100 sq metres, 19-21 storey, 80 yrs lease remaining --
-testcase <- data.frame(town = "CLEMENTI",
-                       floor_area_sqm = 100,
-                       storey_range = "19 TO 21",
-                       remaining_lease_years = 80)
-
-m.mars1.yhat.test <-  predict(m.mars1, newdata = testcase)
-
-m.mars2.yhat.test <-  predict(m.mars2, newdata = testcase)
-
-
-# Estimated Variable Importance in degree 2 MARS
-varimpt <- evimp(m.mars2)
-print(varimpt)
-## Floor Area is relatively most impt, followed by remaining lease.
-
-'
-'
