@@ -50,7 +50,64 @@ cor_mat <- cor(subset(orders_all_1, select=-payment_type)) #no meaningful correl
 generateTrainTest(orders_all_1, 0.7)
 
 
+
 ####ML Models####
+# # 10th, 25th, 50th, 75th, 90th percentiles.----
+taus <- c(.1, .25, .5, .75, .90)
+variable = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
+             'payment_typevoucher','','payment_installments','','payment_value','','price','','freight_value','',
+             'product_name_lenght','','product_description_lenght','','product_photos_qty','')
+
+table <- data.frame("Variable"=variable,"10%"=1:23,"25%"=1:23,"50%"=1:23,"75%"=1:23,"90%"=1:23)
+
+destroyX = function(es) {
+  f = es
+  for (col in c(1:ncol(f))){ #for each column in dataframe
+    if (startsWith(colnames(f)[col], "X") == TRUE)  { #if starts with 'X' ..
+      colnames(f)[col] <- paste(substr(colnames(f)[col], 2, 3),'%',sep = "") #get rid of it and add %
+    }
+  }
+  assign(deparse(substitute(es)), f, inherits = TRUE) #assign corrected data to original name
+}
+
+destroyX(table)
+
+calculateAccuracy2 = function(predictive_model, test){
+  predictions=predict(predictive_model, newdata = test)
+  summary(predictions)
+  predictions[predictions<=1.4]=1 
+  predictions[(predictions>1.4)&(predictions<=2.4)]=2
+  predictions[(predictions>2.4)&(predictions<=3.4)]=3
+  predictions[(predictions>3.4)&(predictions<=4.4)]=4
+  predictions[predictions>4.4]=5
+  return(mean(predictions == test$review_score))
+}
+
+for( i in 1:length(taus)){
+  fit <- rq(review_score ~ ., tau=taus[i], data = train)
+  summ <- summary(fit)
+  table[1,i+1] = calculateAccuracy2(fit,test)
+  for (j in 2:23){
+    if((j %% 2) == 0){table[j,i+1] = summ$coefficients[,1][[j/2]]}
+    else{table[j,i+1] = summ$coefficients[,4][[(j-1)/2]]}
+  }
+  # table[2,i+1] = summ$coefficients[,1][[1]]
+  # table[3,i+1] = summ$coefficients[,4][[1]]
+  # table[4,i+1] = summ$coefficients[,1][[2]]
+  # table[5,i+1] = summ$coefficients[,4][[2]]
+  # table[6,i+1] = summ$coefficients[,1][[3]]
+  # table[7,i+1] = summ$coefficients[,4][[3]]
+}
+
+
+
+
+
+
+
+
+
+
 ### Fit 50th Percentile Line (i.e. Median) ###
 fit.p.5 <- rq(review_score ~ . , tau=.5, data = train) #tau: percentile level. 0.5 is the 50th percentile (aka median).
 #abline(fit.p.5, col="blue")
@@ -79,7 +136,10 @@ calculateAccuracy = function(predictive_model, test){
 calculateAccuracy(fit.p.5, test)
 summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
 
-###Finding derivative variables to find improvement###
+
+
+
+###Finding derivative variables to find improvement###----
 orders_all_2 <- orders_all
 orders_all_2$del_time <- difftime(orders_all$order_delivered_customer_date,
                                 orders_all$order_approved_at,
