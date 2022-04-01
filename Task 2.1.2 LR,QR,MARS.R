@@ -1,27 +1,35 @@
-library(dplyr)
-library(lubridate)
+#################################  B C 2 4 0 7   S E M I N A R   1  #################################
+###########################################  T E A M   7  ###########################################
+################################### Instructor: Prof Neumann Chew ###################################
+
+# <-------- This R script is formatted to fit on a window of width specified by this line --------> #
 
 tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
-  paste('Directory is:', getwd())                                     # the 'Data' folder in the
+    paste('Directory is:', getwd())                                     # the 'Data' folder in the
 })                                                                      # group project.
 
 source("../helperFns.R")    # import list of helper functions we've written separately
 
+#####################################################################################################
+#######                                   DATA PREPROCESSING                                  #######
+
 orders_all <- read.csv("Orders_merged.csv")
 orders_all$order_purchase_timestam1p <-
-  as.POSIXct(orders_all$order_purchase_timestamp,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+  as.POSIXct(orders_all$order_purchase_timestamp,format="%Y-%m-%d %H:%M:%S",
+             tz="America/Sao_Paulo")
 orders_all$order_delivered_customer_date<-
-  as.POSIXct(orders_all$order_delivered_customer_date,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+  as.POSIXct(orders_all$order_delivered_customer_date,format="%Y-%m-%d %H:%M:%S",
+             tz="America/Sao_Paulo")
 orders_all$order_approved_at<-
-  as.POSIXct(orders_all$order_approved_at,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+  as.POSIXct(orders_all$order_approved_at,format="%Y-%m-%d %H:%M:%S",
+             tz="America/Sao_Paulo")
 orders_all$order_estimated_delivery_date<-
-  as.POSIXct(orders_all$order_estimated_delivery_date,format="%Y-%m-%d",tz="America/Sao_Paulo")
+  as.POSIXct(orders_all$order_estimated_delivery_date,format="%Y-%m-%d",
+             tz="America/Sao_Paulo")
 orders_all$shipping_limit_date<-
-  as.POSIXct(orders_all$shipping_limit_date,format="%Y-%m-%d %H:%M:%S",tz="America/Sao_Paulo")
+  as.POSIXct(orders_all$shipping_limit_date,format="%Y-%m-%d %H:%M:%S",
+             tz="America/Sao_Paulo")
 
-
-
-####Preparing data for ML models####
 ###Selecting and dropping variables###
 drops <- c("product_id","seller_id","order_id","customer_id","order_status",
            "order_purchase_timestamp","order_approved_at","order_delivered_carrier_date",
@@ -29,8 +37,8 @@ drops <- c("product_id","seller_id","order_id","customer_id","order_status",
            "customer_unique_id","customer_zip_code_prefix","customer_city",
            "customer_state","review_id", "review_comment_title","review_comment_message",
            "review_creation_date","review_answer_timestamp","payment_sequential",
-           "order_item_id","shipping_limit_date","seller_zip_code_prefix","seller_city","seller_state",
-           "product_category_name","product_weight_g","product_length_cm",
+           "order_item_id","shipping_limit_date","seller_zip_code_prefix","seller_city",
+           "seller_state", "product_category_name","product_weight_g","product_length_cm",
            "product_height_cm","product_width_cm","product_category_name_english")
 
 orders_all_1 <- orders_all[ , !(names(orders_all) %in% drops)]
@@ -45,12 +53,11 @@ cor_mat <- cor(subset(orders_all_1, select=-payment_type)) #no meaningful correl
 # pairs(orders_all_1, col="blue", main="Scatterplots") #useless coz categorical?
 # par(mfrow=c(1,1))
 
-###Train-test split###
+#####################################################################################################
+#######                                    TRAIN-TEST SPLIT                                   #######
+
 generateTrainTest(orders_all_1, 0.7)
 
-
-
-####ML Models####
 
 calculateAccuracy2 = function(predictive_model, test){
   predictions=predict(predictive_model, newdata = test)
@@ -63,9 +70,10 @@ calculateAccuracy2 = function(predictive_model, test){
   return(mean(predictions == test$review_score))
 }
 
-#-------------------------------Linear Regression-------------------------------#
+#####################################################################################################
+#####################################    LINEAR REGRESSION, V1   ####################################
 
-#training linear regression model on orders_all_1
+###Linear Regression: Train on orders_all_1###----
 review_lr <- lm(review_score ~ ., data = orders_all_1)
 summary(review_lr)
 
@@ -74,15 +82,18 @@ summary(review_lr)$adj.r.squared
 Data <- c('orders_all_1', 'orders_all_2')
 Accuracy.LR <- round(calculateAccuracy2(review_lr, test), 3)
 
-#------------------------------Quantile Regression------------------------------#
+#####################################################################################################
+####################################    QUANTILE REGRESSION, V1   ###################################
 
 ###Creating Quantile Regression Table###----
 taus <- c(.1, .25, .5, .75, .90)
 variable = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
-             'payment_typevoucher','','payment_installments','','payment_value','','price','','freight_value','',
-             'product_name_lenght','','product_description_lenght','','product_photos_qty','')
+             'payment_typevoucher','','payment_installments','','payment_value','','price','',
+             'freight_value','', 'product_name_lenght','','product_description_lenght','',
+             'product_photos_qty','')
 
-table <- data.frame("Variable"=variable,"10%"=rep("-",23),"25%"=rep("-",23),"50%"=rep("-",23),"75%"=rep("-",23),"90%"=rep("-",23))
+table <- data.frame("Variable"=variable,"10%"=rep("-",23),"25%"=rep("-",23),"50%"=rep("-",23),
+                    "75%"=rep("-",23),"90%"=rep("-",23))
 
 destroyX = function(es) {
   f = es
@@ -140,12 +151,11 @@ for( i in 1:length(taus)){
 }
 
 
-
-
 ###################################################
 
 # ### Fit 50th Percentile Line (i.e. Median) ###
-# fit.p.5 <- rq(review_score ~ . , tau=.5, data = train) #tau: percentile level. 0.5 is the 50th percentile (aka median).
+# fit.p.5 <- rq(review_score ~ . , tau=.5, data = train) #tau: percentile level.
+# 0.5 is the 50th percentile (aka median).
 # #abline(fit.p.5, col="blue")
 # 
 # fit.p.5
@@ -172,10 +182,9 @@ for( i in 1:length(taus)){
 # calculateAccuracy(fit.p.5, test)
 # summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
 
+#####################################################################################################
+#######                                DERIVING MORE VARIABLES                                #######
 
-
-
-###Finding derivative variables to find improvement###----
 orders_all_2 <- orders_all
 orders_all_2$del_time <- difftime(orders_all$order_delivered_customer_date,
                                   orders_all$order_approved_at,
@@ -199,12 +208,14 @@ orders_all_2 <- na.omit(orders_all_2)
 orders_all_2 <- orders_all_2[ , -which(names(orders_all_2) %in% c("price"))]
 
 
-###Train-test split###
+#####################################################################################################
+#######                                    TRAIN-TEST SPLIT                                   #######
 generateTrainTest(orders_all_2, 0.7)
 
-#----------------------Linear Regression with orders_all_2----------------------#
+#####################################################################################################
+#####################################    LINEAR REGRESSION, V2   ####################################
 
-#training linear regression model on orders_all_2
+###Linear Regression: Train on orders_all_2###----
 review_lr2 <- lm(review_score ~ ., data = orders_all_2)
 summary(review_lr2)
 
@@ -214,22 +225,25 @@ Accuracy.LR <- c(Accuracy.LR, round(calculateAccuracy2(review_lr2, test), 3))
 
 Accuracy_table <- data.frame(Data, Accuracy.LR)
 
-#---------------------Quantile Regression with orders_all_2---------------------#
-###################################################
-### Fit 50th Percentile Line (i.e. Median) ###
+#####################################################################################################
+####################################    QUANTILE REGRESSION, V2   ###################################
+
+###Fit 50th Percentile Line (i.e. Median) for Quantile Regression###----
 train.jitter = train
 train.jitter$Late <- jitter(train.jitter$Late)
 train.jitter$product_photos_qty <- jitter(train.jitter$product_photos_qty)
 train.jitter$purchase_day_of_week <- jitter(train.jitter$purchase_day_of_week)
-fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter) #tau: percentile level. 0.5 is the 50th percentile (aka median).
+fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter) #tau: percentile level. 
+#0.5 is the 50th percentile (aka median).
 
-###################################################
-
+###Debugging 'Singular Design Matrix Error###----
 print('singular design matrix error. why?')
 sapply(train.jitter, class)
-model.matrix(~train.jitter$review_score+train.jitter$payment_type) #this is the design matrix - matrix that gets passed into the function
+model.matrix(~train.jitter$review_score+train.jitter$payment_type) 
+#this is the design matrix - matrix that gets passed into the function
 #'singular' matrix means the determinant is zero, e.g. the diagonals of the matrix are all zero.
-print('https://cran.r-project.org/web/packages/quantreg/quantreg.pdf page 68 tells us to use sfn method for sparse matrices')
+print('https://cran.r-project.org/web/packages/quantreg/quantreg.pdf page 68 tells us 
+      to use sfn method for sparse matrices')
 fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter, method='sfn')
 print('error: increase tmpmax. lets use traceback() in the console to see the error')
 #9: stop(mess)
@@ -241,8 +255,10 @@ print('error: increase tmpmax. lets use traceback() in the console to see the er
 #3: rq.fit.sfn(x, y, tau = tau, ...)
 #2: rq.fit(X, Y, tau = tau, method, ...)
 #1: rq(review_score ~ ., tau = 0.5, data = train.jitter, method = "sfn")
-print('according to documentation in https://stat.ethz.ch/pipermail/r-help/2008-October/178523.html, error originates from rq.fit.sfn')
-print('lets type rq.fit.sfn in console to view the source code https://mail.rfaqs.com/source-code-of-r-method/')
+print('according to documentation in https://stat.ethz.ch/pipermail/r-help/2008-October/
+      178523.html, error originates from rq.fit.sfn')
+print('lets type rq.fit.sfn in console to view the source code https://mail.rfaqs.com/
+      source-code-of-r-method/')
 #    ctrl <- sfn.control()
 #if (!missing(control)) {
 #    control <- as.list(control)
@@ -250,7 +266,8 @@ print('lets type rq.fit.sfn in console to view the source code https://mail.rfaq
 #}
 #nsubmax <- ctrl$nsubmax
 #tmpmax <- ctrl$tmpmax
-print('sfn.control() is what we need to increase tmpmax https://www.rdocumentation.org/packages/quantreg/versions/5.88/topics/sfn.control')
+print('sfn.control() is what we need to increase tmpmax https://www.rdocumentation.org/
+      packages/quantreg/versions/5.88/topics/sfn.control')
 sfn.control(tmpmax = Inf)
 fit.p.5.2 <- rq(review_score ~ . , tau=.5, data = train.jitter, method='sfn')
 print('doesnt work, we might need to run rq.fit.sfn with tmpmax inside ourselves')
@@ -259,7 +276,8 @@ sfn.X = train.jitter
 sfn.X$review_score = NULL
 sfn.X.mat = as.matrix(sfn.X)
 sfn.sX = as.matrix.csr(sfn.X.mat)
-print('error: everything in the matrix must be a number, i.e. we need to one-hot encode the categorical ourselves')
+print('error: everything in the matrix must be a number, i.e. we need to one-hot encode 
+      the categorical ourselves')
 rm(sfn.X, sfn.X.mat, sfn.Y)
 
 library(mltools)
@@ -276,8 +294,9 @@ sfn.sX = as.matrix.csr(sfn.X.mat)
 rq.fit.sfn(sfn.sX, sfn.Y, control = list(tmpmax=999999) )
 rm(sfn.X, sfn.X.mat, sfn.Y, sfn.sX, train.jitter, train.jitter.1hot)
 
-#back to the drawing board----
-#https://stats.stackexchange.com/questions/70899/what-correlation-makes-a-matrix-singular-and-what-are-implications-of-singularit/70910#70910
+#back to the drawing board
+#hstats.stackexchange.com/questions/70899/what-correlation-makes-a-matrix-
+#singular-and-what-are-implications-of-singularit/70910#70910
 print('hypothesis: del_time, est_del_time and delta_time linear independances is causing this')
 orders_all_2.2 = orders_all_2
 orders_all_2.2$del_time = NULL
@@ -289,15 +308,17 @@ summary(fit.p.5.2)
 calculateAccuracy(fit.p.5.2, test)
 #https://stat.ethz.ch/pipermail/r-help/2006-July/109821.html
 #0.561 accuracy. pain
-print('hypothesis is correct: linear independances between the time columns (deriatives of each other) caused the singular matrix problem')
+print('hypothesis is correct: linear independances between the time columns 
+      (deriatives of each other) caused the singular matrix problem')
 
-
-###Creating Quantile Regression Table###
+###Creating Quantile Regression Table###----
 variable2 = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
-              'payment_typevoucher','','payment_installments','','payment_value','','freight_value','',
-              'product_name_lenght','','product_description_lenght','','product_photos_qty','','delta_time','',
-              'Late','','total_price','','freight_ratio','','purchase_day_of_week','')
-table2 <- data.frame("Variable"=variable2,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),"75%"=rep("-",31),"90%"=rep("-",31))
+              'payment_typevoucher','','payment_installments','','payment_value','',
+              'freight_value','','product_name_lenght','','product_description_lenght','',
+              'product_photos_qty','','delta_time','','Late','','total_price','',
+              'freight_ratio','','purchase_day_of_week','')
+table2 <- data.frame("Variable"=variable2,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),
+                     "75%"=rep("-",31),"90%"=rep("-",31))
 destroyX(table2)
 for( i in 1:length(taus)){
   fit <- rq(review_score ~ ., tau=taus[i], data = train)
@@ -320,12 +341,14 @@ calculateAccuracy(fit.p.5.3, test)
 summary(fit.p.5.3)
 
 
-###Creating Quantile Regression Table###
+###Creating Quantile Regression Table###----
 variable3 = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
-              'payment_typevoucher','','payment_installments','','payment_value','','freight_value','',
-              'product_name_lenght','','product_description_lenght','','product_photos_qty','',
-              'Late','','total_price','','freight_ratio','','purchase_day_of_week','','delta_time_percentage','')
-table3 <- data.frame("Variable"=variable3,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),"75%"=rep("-",31),"90%"=rep("-",31))
+              'payment_typevoucher','','payment_installments','','payment_value','','freight_value',
+              '','product_name_lenght','','product_description_lenght','','product_photos_qty','',
+              'Late','','total_price','','freight_ratio','','purchase_day_of_week','',
+              'delta_time_percentage','')
+table3 <- data.frame("Variable"=variable3,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),
+                     "75%"=rep("-",31),"90%"=rep("-",31))
 destroyX(table3)
 for( i in 1:length(taus)){
   fit <- rq(review_score ~ ., tau=taus[i], data = train)
@@ -337,11 +360,8 @@ for( i in 1:length(taus)){
   }
 }
 
-
-
-###################################################
-
-#------------------------------MARS Implementation------------------------------#
+#####################################################################################################
+#############################################    MARS   #############################################
 
 library(earth)
 
@@ -365,7 +385,8 @@ calculateAccuracy(reviews_mars2, test) #best accuracy = 0.2867347
 set.seed(22)
 
 earth(review_score ~ . , degree = 2, trace = 3, data = train)
-reviews_mars_10fold <- earth(review_score ~ . , pmethod = "cv", degree = 1, nfold = 10, ncross = 1, data = train)
+reviews_mars_10fold <- earth(review_score ~ . , pmethod = "cv", degree = 1, nfold = 10, 
+                             ncross = 1, data = train)
 summary(reviews_mars_10fold)
 
 calculateAccuracy(reviews_mars_10fold, test) #accuracy = 0.2841064

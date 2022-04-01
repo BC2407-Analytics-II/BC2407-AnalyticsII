@@ -29,8 +29,6 @@ df <- fread("uci_online_retail_cleaned_CLV.csv")
 
 ## Check the type of each column and factorise as necessary
 sapply(df,class)
-df$InvoiceNo <- factor(df$InvoiceNo)
-df$StockCode <- factor(df$StockCode)
 df$CustomerID <- factor(df$CustomerID)
 df$Description <- factor(df$Description)
 df$Country <- factor(df$Country)
@@ -45,6 +43,14 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
+
+df[ ,c('RECENCY',
+        'FREQUENCY',
+        'MONEY',
+        'RECENCY_normalised',
+        'FREQUENCY_normalised',
+        'MONEY_normalised'
+):=NULL]
 
 #####################################################################################################
 #######                                       CLUSTERING                                      #######
