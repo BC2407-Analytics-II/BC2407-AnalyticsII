@@ -119,7 +119,6 @@ ckm1$size
 # Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
 # Slight difference from above km$centers
 ## Visualise the clusters
-par(mfrow=c(1,2))
 plot(df1$clv,col=(ckm1$cluster+1),main ="CK-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
 abline(h = ckm1$centers, col = 1:2, pch = 8,cex = 2)
 ckm1$withinss ## [1] 1159.946 1326.407 1372.275
@@ -159,7 +158,6 @@ z <- summary(logreg1)$coefficients/summary(logreg1)$standard.errors
 pvalue <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
 pvalue
 
-
 logreg1.step <- step(logreg1)
 logreg1.step
 
@@ -174,7 +172,7 @@ logreg1.cm.train
 accuracy.logreg1.train <- mean(predict.cluster.train1 == train$cluster)
 accuracy.logreg1.train
 
-## Logistic Regression: Train on Original Testset
+## Logistic Regression: Predict on Original Testset
 predict.cluster.test1 <- predict(logreg1.step, newdata=test)
 predict.cluster.test1
 
@@ -237,6 +235,10 @@ accuracy.mars1.test
 
 varimpt1 <- evimp(mars1)
 print(varimpt1)
+
+#####################################################################################################
+#################################    RANDOM FOREST, ORIGINAL DATA   #################################
+
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 

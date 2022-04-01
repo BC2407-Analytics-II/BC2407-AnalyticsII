@@ -86,7 +86,7 @@ viz <- function(df, color_string, source_string) {
         labs(y='Customer Lifetime Value', x='Month-Year',
              title='Customer Lifetime Value over time',
              caption=paste('Source:',source_string)) +
-        change_font +                                               # change font (in helperFns)
+        theme(text = element_text(family = FONT)) +                 # change font (in helperFns)
         theme(plot.title = element_text(hjust = 0.5)) +             # centre-align the title
         scale_x_date(date_labels =  "%b %Y")                        # show as 'Mth 20XX'
     )
@@ -150,7 +150,7 @@ plotForecast <- function(model, forecast, trainset, testset, method) {
             labs(y='Customer Lifetime Value', x='Month-Year',
                 title=paste(FORECAST_PERIODS,'Period Ahead Forecasts based on',method),
                 ) +
-        change_font + 
+        theme(text = element_text(family = FONT)) + 
         theme(plot.title = element_text(hjust = 0.5))
     )
 }

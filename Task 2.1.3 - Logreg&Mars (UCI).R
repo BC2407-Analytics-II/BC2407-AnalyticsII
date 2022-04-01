@@ -1,23 +1,29 @@
-## 2.1.3. UCI
-## Libraries Used -----------------------------------------------------
-library(randomForest)
-library(data.table)
-library(readxl)
-library(earth)
-library(factoextra)
-library(cluster)
-library(dplyr)
-library(tidyverse)
-library(Ckmeans.1d.dp)
-library(nnet)
+#################################  B C 2 4 0 7   S E M I N A R   1  #################################
+###########################################  T E A M   7  ###########################################
+################################### Instructor: Prof Neumann Chew ###################################
+
+# <-------- This R script is formatted to fit on a window of width specified by this line --------> #
 
 tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
-    paste('Directory is:', getwd())                                     # the 'Data' folder in the
+    paste('Directory is:', getwd())                                       # the 'Data' folder in the
 })                                                                      # group project.
 
 source("../helperFns.R")    # import list of helper functions we've written separately
 
-## UCI Dataset -----------------------------------------------------
+library(randomForest)       # for random forest
+library(data.table)         # for data manipulation 1
+library(dplyr)              # for data manipulation 2
+library(tidyverse)          # for data manipulation 3
+library(readxl)             # 
+library(earth)              # for MARS
+library(factoextra)         #
+library(cluster)            # for Kmeans clustering
+library(Ckmeans.1d.dp)      # for Kmeans clustering
+library(nnet)               # for neural networks?
+
+#####################################################################################################
+#######                                   DATA PREPROCESSING                                  #######
+
 df <- fread("uci_online_retail_cleaned_CLV.csv")
 #View(df)
 
@@ -37,12 +43,13 @@ df$InvoiceDate_MonthName = factor(months(df$InvoiceDate))
 df$InvoiceDate_HourofDay = as.numeric(format(df$InvoiceDate, format = "%H"))
 df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24), labels=c("Midnight", "Morning", "Afternoon", "Evening"))
 
-
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
 
-## Clustering (UCI) -----------------------------------------------------
+#####################################################################################################
+#######                                       CLUSTERING                                      #######
 # K-Means Clustering to create 3 segments
+
 ## Find out optimal number of clusters using elbow method
 tot_withinss <- map_dbl(1:10,  function(k){
   model <- kmeans(x = df$clv, centers = k,nstart=25)
@@ -99,14 +106,16 @@ ckm$tot.withinss ## [1] 2881365
 df$cluster = factor(ckm$cluster)
 summary(df$cluster)
 
-
-## Generate Train-Test (UCI) -----------------------------------------------------
+#####################################################################################################
+#######                                    TRAIN-TEST SPLIT                                   #######
 generateTrainTest(df,0.7)
 summary(train)
 summary(test)
 
+#####################################################################################################
+##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
-## Logistic Regression: Original Trainset (UCI) -----------------------------------------------------
+## Logistic Regression: Train on Original Trainset
 logreg <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train)
 summary(logreg)
 
@@ -127,7 +136,7 @@ pvalue
 logreg.step <- step(logreg)
 logreg.step
 
-## Logistic Regression: Predict on Testset (UCI) -----------------------------------------------------
+## Logistic Regression: Predict on Original Trainset
 predict.cluster.train <- predict(logreg.step)
 predict.cluster.train
 
@@ -137,7 +146,7 @@ logreg.cm.train
 accuracy.logreg.train <- mean(predict.cluster.train == train$cluster)
 accuracy.logreg.train
 
-## Predict on testset
+## Logistic Regression: Predict on Original Testset
 predict.cluster.test <- predict(logreg.step, newdata=test)
 predict.cluster.test
 
@@ -147,7 +156,10 @@ logreg.cm.test
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
 accuracy.logreg.test
 
-## MARS: Original Trainset (UCI) -----------------------------------------------------
+#####################################################################################################
+######################################    MARS, ORIGINAL DATA   #####################################
+
+## MARS: Train on Original Trainset
 set.seed(2014)
 mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=2,data=train)
 summary(mars)
@@ -167,7 +179,7 @@ accuracy.mars.train
 varimpt <- evimp(mars)
 print(varimpt)
 
-## MARS: Predict on Testset (UCI) -----------------------------------------------------
+## MARS: Predict on Testset
 mars.predict.test <- predict(mars, newdata=test)
 mars.predict.test
 mars.predict.test <- as.data.frame(mars.predict.test)
@@ -184,23 +196,33 @@ accuracy.mars.test
 varimpt <- evimp(mars)
 print(varimpt)
 
+#####################################################################################################
+#################################    RANDOM FOREST, ORIGINAL DATA   #################################
+
+
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
-# Create balanced trainset for UCI  --------------------------------
-# Random sample from majority class Default = No and combine with Default = Yes to form new trainset
+
+#####################################################################################################
+########################################    BALANCING DATA   ########################################
+
+## Random sample from majority class Default = No and combine with Default = Yes to form new trainset
 majority <- train[cluster == 1]
 middle <- train[cluster == 2]
 minority <- train[cluster == 3] 
-# Randomly sample the row numbers to be in trainset. Same sample size as minority cases. 
+## Randomly sample the row numbers to be in trainset. Same sample size as minority cases. 
 chosen <- sample(seq(1:nrow(majority)), size = nrow(minority)) 
 chosen2 <- sample(seq(1:nrow(middle)), size = nrow(minority))
-# Subset the original trainset based on randomly chosen row numbers. 
+## Subset the original trainset based on randomly chosen row numbers. 
 majority.chosen <- majority[chosen] 
 middle.chosen <- middle[chosen2]
-# Combine two data tables by appending the rows 
+## Combine two data tables by appending the rows 
 train.bal <- rbind(majority.chosen,middle.chosen, minority) 
 summary(train.bal) 
 
-## Logistic Regression: Balanced Trainset -----------------------------------------------------
+#####################################################################################################
+##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
+
+## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
 logreg.bal <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train.bal)
 summary(logreg.bal)
@@ -221,7 +243,7 @@ pvalue
 logreg.step.bal <- step(logreg.bal)
 logreg.step.bal
 
-## Predict on trainset
+## Logistic Regression: Predict on Balanced Trainset
 predict.cluster.train.bal <- predict(logreg.step.bal)
 predict.cluster.train.bal
 
@@ -231,7 +253,7 @@ logreg.cm.train.bal
 accuracy.logreg.train.bal <- mean(predict.cluster.train.bal == train.bal$cluster)
 accuracy.logreg.train.bal ## [1] 0.3929632
 
-## Predict on testset
+## Logistic Regression: Predict on Balanced Testset
 predict.cluster.test.bal <- predict(logreg.step.bal, newdata=test)
 predict.cluster.test.bal
 
@@ -242,7 +264,10 @@ accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
 accuracy.logreg.test.bal ## [1] 0.6791143
 
 
-## MARS: Balanced Trainset -----------------------------------------------------
+#####################################################################################################
+######################################    MARS, BALANCED DATA   #####################################
+
+## MARS: Train on Balanced Trainset
 set.seed(2014)
 mars.bal <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=1,data=train.bal)
 summary(mars.bal)
@@ -262,7 +287,7 @@ accuracy.mars.train.bal
 varimpt <- evimp(mars.bal)
 print(varimpt)
 
-## MARS: Predict on Testset (UCI) -----------------------------------------------------
+## MARS: Predict on Balanced Testset
 mars.predict.test.bal <- predict(mars.bal, newdata=test)
 mars.predict.test.bal
 mars.predict.test.bal <- as.data.frame(mars.predict.test.bal)
@@ -281,13 +306,4 @@ print(varimpt)
 
 ## Degree 2 has higher accuracy for train, lower accuracy for test
 ## Degree 1 has higher accuracy for test, lower accuracy for train
-
-
-
-
-
-
-
-
-
 
