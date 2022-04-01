@@ -1,9 +1,8 @@
 library(dplyr)
-library(quantreg)
 library(lubridate)
 
 tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
-    paste('Directory is:', getwd())                                     # the 'Data' folder in the
+  paste('Directory is:', getwd())                                     # the 'Data' folder in the
 })                                                                      # group project.
 
 source("../helperFns.R")    # import list of helper functions we've written separately
@@ -154,8 +153,8 @@ for( i in 1:length(taus)){
 ###Finding derivative variables to find improvement###----
 orders_all_2 <- orders_all
 orders_all_2$del_time <- difftime(orders_all$order_delivered_customer_date,
-                                orders_all$order_approved_at,
-                                units="days")
+                                  orders_all$order_approved_at,
+                                  units="days")
 orders_all_2$est_del_time<- difftime(orders_all$order_estimated_delivery_date,
                                      orders_all$order_approved_at,
                                      units="days")
