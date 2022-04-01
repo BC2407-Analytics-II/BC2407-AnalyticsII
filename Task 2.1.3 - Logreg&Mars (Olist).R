@@ -366,7 +366,5 @@ accuracy.mars.test.bal
 varimpt <- evimp(mars.bal)
 print(varimpt)
 
-## Degree 2 has higher accuracy for train, lower accuracy for test
-## Degree 1 has higher accuracy for test, lower accuracy for train
 
 
