@@ -12,6 +12,7 @@ source("../helperFns.R")    # import list of helper functions we've written sepa
 
 library("dplyr")            # for group_by
 library("forecast")         # for generating h-period ahead forecasts
+library("lubridate")        # for date_decimal
 
 #####################################################################################################
 #######                                   DATA PREPROCESSING                                  #######
@@ -66,26 +67,55 @@ df2TS <- df2TS[!(df2TS$MnthYr=='2016-12'),]
 dfTS.ts <- ts(dfTS$total_CLV, frequency = 12, start = c(2010,12))
 dfTS.ts
 
-plot.ts(dfTS.ts, ylab = "CLV", xlab = "Year-Quarter",
-        main = "Customer Lifetime Value over time",
-        sub = "Source: UCI")
+#################################################################
+######################### FUNCTION: viz #########################
+#################################################################
+### This function takes in a dataframe (without quotes), a hexadecimal colour code (with "quotes")
+### for the colour of the line, and the dataset's source (with "quotes")
+### and prints the time-series in ggplot.
+viz <- function(df, color_string, source_string) {
+    df_viz=df
+    df_viz$MnthYr <- paste(df_viz$MnthYr,'-01',sep='')              # change to YYYY-MM-DD (DD=01)
+    df_viz$MnthYr <- as.POSIXct(df_viz$MnthYr,format="%Y-%m-%d")    # change back to datetime
+    df_viz$MnthYr <- as.Date(df_viz$MnthYr)
+    
+    options(scipen=10000)                                           # don't use scientific notation
+    print(
+        ggplot(df_viz, aes(x=MnthYr, y=total_CLV, group=1)) + 
+        geom_line(color=color_string, size=1.25) + 
+        labs(y='Customer Lifetime Value', x='Month-Year',
+             title='Customer Lifetime Value over time',
+             caption=paste('Source:',source_string)) +
+        change_font +                                               # change font (in helperFns)
+        theme(plot.title = element_text(hjust = 0.5)) +             # centre-align the title
+        scale_x_date(date_labels =  "%b %Y")                        # show as 'Mth 20XX'
+    )
+}
+#################### END FUNCTION DEFINITION ####################
+#################################################################
+
+viz(dfTS, "skyblue", "UCI")
 
 df2TS.ts <- ts(df2TS$total_CLV, frequency = 12, start = c(2017,1))
 df2TS.ts
 
-plot.ts(df2TS.ts, ylab = "CLV", xlab = "Year-Quarter",
-        main = "Customer Lifetime Value over time",
-        sub = "Source: Olist")
+viz(df2TS, "springgreen2", "Olist")
 
 #######                                    TRAIN-TEST SPLIT                                   #######
-trainset1 <- ts(dfTS.ts[-c(11:12)], frequency = 12, start = c(2010,12))
+FORECAST_PERIODS = 3
+
+end = nrow(dfTS)
+start = end-FORECAST_PERIODS+1
+trainset1 <- ts(dfTS.ts[-c(start:end)], frequency = 12, start = c(2010,12))
 trainset1
-testset1 <- ts(dfTS.ts[c(11:12)], frequency = 12, start = c(2011,10))
+testset1 <- ts(dfTS.ts[c(start:end)], frequency = 12, start = c(2011,9))
 testset1
 
-trainset2 <- ts(df2TS.ts[-c(18:20)], frequency = 12, start = c(2017,1))
+end = nrow(df2TS)
+start = end-FORECAST_PERIODS+1
+trainset2 <- ts(df2TS.ts[-c(start:end)], frequency = 12, start = c(2017,1))
 trainset2
-testset2 <- ts(df2TS.ts[c(18:20)], frequency = 12, start = c(2018,6))
+testset2 <- ts(df2TS.ts[c(start:end)], frequency = 12, start = c(2018,6))
 testset2
 
 #################################    SIMPLE EXPONENTIAL SMOOTHING   #################################
@@ -93,14 +123,38 @@ testset2
 # Simple Exponential Smoothing - df1 ---------------------------------------------
 m.ses <- HoltWinters(trainset1, seasonal = "multiplicative", beta=F, gamma=F)
 m.ses
-## Optimal value of alpha = 0.5241683 Minimise SSE of one period ahead forecast.
 ## Coefficient a = last value of Lt.
 plot(m.ses, main = "Simple Exp Smoothing on Short Data")
 #black = observed, red = one period ahead forecast
 m.ses$fitted
-m.ses.forecasts <- forecast(m.ses, h = 2)
-plot(m.ses.forecasts, main = "2 Period Ahead Forecasts based on SES")
-accuracy(m.ses.forecasts, testset1)
+m.ses.forecasts <- forecast(m.ses, h = FORECAST_PERIODS)
+
+#################################################################
+##################### FUNCTION: plotForecast ####################
+#################################################################
+### This function takes in a forecast object (without quotes), and number of predictions
+### and prints the time-series in ggplot.
+plotForecast <- function(forecast, testset) {
+    options(scipen=10000)                                   
+    print(
+        autoplot(forecast) + 
+        scale_x_continuous(labels = function(x) {format(date_decimal(x), "%b %Y")}) +
+        labs(y='Customer Lifetime Value', x='Month-Year',
+             title=paste(FORECAST_PERIODS,'Period Ahead Forecasts based on SES'),
+        ) +
+        change_font + 
+        theme(plot.title = element_text(hjust = 0.5)) +
+        autolayer(testset, series = "Actual") +
+        autolayer(forecast, series="Forecasted")
+    )
+}
+#################### END FUNCTION DEFINITION ####################
+#################################################################
+
+plotForecast(m.ses.forecasts, testset1)
+
+ses.1 = accuracy(m.ses.forecasts, testset1)
+ses.1
 
 # Simple Exponential Smoothing - df2 ---------------------------------------------
 m.ses <- HoltWinters(trainset2, seasonal = "multiplicative", beta=F, gamma=F)
@@ -110,35 +164,39 @@ m.ses
 plot(m.ses, main = "Simple Exp Smoothing on Medium Data")
 #black = observed, red = one period ahead forecast
 m.ses$fitted
-m.ses.forecasts <- forecast(m.ses, h = 3)
-plot(m.ses.forecasts, main = "3 Period Ahead Forecasts based on SES")
-accuracy(m.ses.forecasts, testset2)
-
+m.ses.forecasts <- forecast(m.ses, h = FORECAST_PERIODS)
+plotForecast(m.ses.forecasts, testset2)
+ses.2 = accuracy(m.ses.forecasts, testset2)
+ses.2
 
 #################################           HOLT'S METHOD           #################################
 
 # Holt's Method - df1 ---------------------------------------------
-m.holt <- HoltWinters(trainset1, seasonal = "multiplicative", gamma=F)
+m.holt <- HoltWinters(trainset1, seasonal = "multiplicative", gamma=F) #optimisation difficulties
 m.holt
 plot(m.holt, main = "Holt's Method on Short Data")
 m.holt$fitted
-m.holt.forecasts <- forecast(m.holt, h = 2)
-plot(m.holt.forecasts, main = "2 Period Ahead Forecasts based on Holt's")
-accuracy(m.holt.forecasts, testset1)
+m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
+plotForecast(m.holt.forecasts, testset1)
+holt.1 = accuracy(m.holt.forecasts, testset1)
+holt.1
 
 # Holt's Method - df2 ---------------------------------------------
 m.holt <- HoltWinters(trainset2, seasonal = "multiplicative", gamma=F)
 m.holt
 plot(m.holt, main = "Holt's Method on Medium Data")
 m.holt$fitted
-m.holt.forecasts <- forecast(m.holt, h = 2)
-plot(m.holt.forecasts, main = "3 Period Ahead Forecasts based on Holt's")
-accuracy(m.holt.forecasts, testset2)
+m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
+plotForecast(m.holt.forecasts, testset2)
+holt.2 = accuracy(m.holt.forecasts, testset2)
+holt.2
 
 #################################        HOLT-WINTER'S METHOD       #################################
 m.winters <- HoltWinters(trainset1, seasonal = "multiplicative")
+# time series has less than 2 periods
 
-m.winters <- HoltWinters(trainset2, seasonal = "multiplicative")
+m.winters <- HoltWinters(trainset2, seasonal = "multiplicative") 
+# time series has less than 2 periods
 
 #### bringing in a new dataset for Holt-Winters ####
 df3 = read.csv('Raw Data/timeseries.csv')
@@ -154,22 +212,70 @@ df3TS = df3TS[order(df3TS$MnthYr),]
 #data is complete - don't need remove
 df3TS.ts <- ts(df3TS$total_CLV, frequency = 12, start = c(2015,1))
 df3TS.ts
+df3TS <- df3TS[!(df3TS$MnthYr=='2018-12'),]
 
-plot.ts(df3TS.ts, ylab = "CLV", xlab = "Year-Quarter",
-        main = "Customer Lifetime Value over time",
-        sub = "Source: Kaggle")
+viz(df3TS, "violet", "Kaggle")
 
-trainset3 <- ts(df3TS.ts[-c(45:48)], frequency = 12, start = c(2015,1))
+end = nrow(df3TS)
+start = end-FORECAST_PERIODS+1
+trainset3 <- ts(df3TS.ts[-c(start:end)], frequency = 12, start = c(2015,1))
 trainset3
-testset3 <- ts(df3TS.ts[c(45:48)], frequency = 12, start = c(2018,9))
+testset3 <- ts(df3TS.ts[c(start:end)], frequency = 12, start = c(2018,10))
 testset3
 
-m.holt <- HoltWinters(trainset3, seasonal = "multiplicative")
+m.holt <- HoltWinters(trainset3, seasonal = "multiplicative", gamma=F)
 m.holt
 plot(m.holt, main = "Holt's Method on Long Data")
-m.holt$fitted
-m.holt.forecasts <- forecast(m.holt, h = 2)
-plot(m.holt.forecasts, main = "4 Period Ahead Forecasts based on Holt's")
-accuracy(m.holt.forecasts, testset3)
+m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
+plotForecast(m.holt.forecasts, testset3)
+holt.3 = accuracy(m.holt.forecasts, testset3)
+holt.3
+
+m.winters <- HoltWinters(trainset3, seasonal = "multiplicative")
+m.winters
+plot(m.winters, main = "Holt-Winter's Method on Long Data")
+m.winters.forecasts <- forecast(m.winters, h = FORECAST_PERIODS)
+plot(m.winters.forecasts)
+plotForecast(m.winters.forecasts, testset3)
+winter.3 = accuracy(m.winters.forecasts, testset3)
+winter.3
 
 #######                                          END                                          #######
+
+
+forecastt <- predict(m.holt, n.ahead = 3, prediction.interval = T, level = 0.95)
+plot(m.holt)
+plot(m.holt$fitted[,1])
+
+
+#HWplot.R
+library(ggplot2)
+library(reshape)
+HWplot<-function(ts_object,  n.ahead=4,  CI=.95,  error.ribbon='green', line.size=1){
+    
+    hw_object<-HoltWinters(ts_object)
+    
+    forecast<-predict(hw_object,  n.ahead=n.ahead,  prediction.interval=T,  level=CI)
+    
+    
+    for_values<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
+    
+    fitted_values<-data.frame(time=round(time(hw_object$fitted),  3),  value_fitted=as.data.frame(hw_object$fitted)$xhat)
+    
+    actual_values<-data.frame(time=round(time(hw_object$x),  3),  Actual=c(hw_object$x))
+    
+    
+    graphset<-merge(actual_values,  fitted_values,  by='time',  all=TRUE)
+    graphset<-merge(graphset,  for_values,  all=TRUE,  by='time')
+    graphset[is.na(graphset$dev),  ]$dev<-0
+    
+    graphset$Fitted<-c(rep(NA,  NROW(graphset)-(NROW(for_values) + NROW(fitted_values))),  fitted_values$value_fitted,  for_values$value_forecast)
+    
+    
+    graphset.melt<-melt(graphset[, c('time', 'Actual', 'Fitted')], id='time')
+    
+    p<-ggplot(graphset.melt,  aes(x=time,  y=value)) + geom_ribbon(data=graphset, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill=error.ribbon) + geom_line(aes(colour=variable), size=line.size) + geom_vline(x=max(actual_values$time), xintercept=0,  lty=2) + xlab('Time') + ylab('Value') + scale_colour_hue('')
+    return(p)
+}
+
+HWplot(trainset3, n.ahead = 3)
