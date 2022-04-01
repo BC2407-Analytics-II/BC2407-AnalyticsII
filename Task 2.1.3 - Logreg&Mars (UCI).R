@@ -116,7 +116,7 @@ summary(test)
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
-logreg <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train)
+logreg <- multinom(cluster~ InvoiceDate+CountryUnitPrice+ProductVariations, data=train)
 summary(logreg)
 
 ## Odds Ratio
@@ -161,7 +161,7 @@ accuracy.logreg.test
 
 ## MARS: Train on Original Trainset
 set.seed(2014)
-mars <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=2,data=train)
+mars <- earth(cluster~UnitPrice+InvoiceDate+Country+ProductVariations,degree=2,data=train)
 summary(mars)
 mars.predict.train <- predict(mars)
 mars.predict.train
@@ -224,7 +224,7 @@ summary(train.bal)
 
 ## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
-logreg.bal <- multinom(cluster~ Quantity+UnitPrice+ProductVariations, data=train.bal)
+logreg.bal <- multinom(cluster~ UnitPrice+InvoiceDate+Country+ProductVariations, data=train.bal)
 summary(logreg.bal)
 
 ## Odds Ratio
@@ -269,7 +269,7 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~Quantity+UnitPrice+Country+ProductVariations,degree=1,data=train.bal)
+mars.bal <- earth(cluster~ UnitPrice++InvoiceDate+Country+ProductVariations,degree=1,data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
