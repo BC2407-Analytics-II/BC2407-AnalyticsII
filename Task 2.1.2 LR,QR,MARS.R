@@ -48,7 +48,8 @@ cor_mat <- cor(subset(orders_all_1, select=-payment_type)) #no meaningful correl
 ###Train-test split###
 generateTrainTest(orders_all_1, 0.7)
 
-
+train_orders_all_1 <- train #creating a copy of trainset for orders_all_1 
+test_orders_all_1 <- test #creating a copy of testset for orders_all_1 
 
 ####ML Models####
 
@@ -63,16 +64,6 @@ calculateAccuracy2 = function(predictive_model, test){
   return(mean(predictions == test$review_score))
 }
 
-#-------------------------------Linear Regression-------------------------------#
-
-#training linear regression model on orders_all_1
-review_lr <- lm(review_score ~ ., data = orders_all_1)
-summary(review_lr)
-
-summary(review_lr)$r.squared
-summary(review_lr)$adj.r.squared
-Data <- c('orders_all_1', 'orders_all_2')
-Accuracy.LR <- round(calculateAccuracy2(review_lr, test), 3)
 
 #------------------------------Quantile Regression------------------------------#
 
@@ -202,19 +193,9 @@ orders_all_2 <- orders_all_2[ , -which(names(orders_all_2) %in% c("price"))]
 ###Train-test split###
 generateTrainTest(orders_all_2, 0.7)
 
-#----------------------Linear Regression with orders_all_2----------------------#
+train_orders_all_2 <- train #creating a copy of trainset for orders_all_2 
+test_orders_all_2 <- test #creating a copy of testset for orders_all_2
 
-#training linear regression model on orders_all_2
-review_lr2 <- lm(review_score ~ ., data = orders_all_2)
-summary(review_lr2)
-
-summary(review_lr2)$r.squared
-summary(review_lr2)$adj.r.squared
-Accuracy.LR <- c(Accuracy.LR, round(calculateAccuracy2(review_lr2, test), 3))
-
-Accuracy_table <- data.frame(Data, Accuracy.LR)
-
-#---------------------Quantile Regression with orders_all_2---------------------#
 ###################################################
 ### Fit 50th Percentile Line (i.e. Median) ###
 train.jitter = train
@@ -340,6 +321,27 @@ for( i in 1:length(taus)){
 
 
 ###################################################
+
+#-------------------------------Linear Regression-------------------------------#
+
+#training linear regression model on orders_all_1
+review_lr <- lm(review_score ~ ., data = train_orders_all_1)
+summary(review_lr)
+
+summary(review_lr)$r.squared
+summary(review_lr)$adj.r.squared
+Data <- c('orders_all_1', 'orders_all_2')
+Accuracy.LR <- round(calculateAccuracy2(review_lr, test_orders_all_1), 3)
+
+#training linear regression model on orders_all_2
+review_lr2 <- lm(review_score ~ ., data = train_orders_all_2)
+summary(review_lr2)
+
+summary(review_lr2)$r.squared
+summary(review_lr2)$adj.r.squared
+Accuracy.LR <- c(Accuracy.LR, round(calculateAccuracy2(review_lr2, test_orders_all_2), 3))
+
+Accuracy_table <- data.frame(Data, Accuracy.LR)
 
 #------------------------------MARS Implementation------------------------------#
 
