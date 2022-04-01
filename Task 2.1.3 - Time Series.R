@@ -101,6 +101,7 @@ df2TS.ts
 
 viz(df2TS, "springgreen2", "Olist")
 
+#####################################################################################################
 #######                                    TRAIN-TEST SPLIT                                   #######
 FORECAST_PERIODS = 3
 
@@ -118,6 +119,7 @@ trainset2
 testset2 <- ts(df2TS.ts[c(start:end)], frequency = 12, start = c(2018,6))
 testset2
 
+#####################################################################################################
 #################################    SIMPLE EXPONENTIAL SMOOTHING   #################################
 
 # Simple Exponential Smoothing - df1 ---------------------------------------------
@@ -173,6 +175,7 @@ plotForecast(m.ses, m.ses.forecasts, trainset2, testset2, "SES")
 ses.2 = accuracy(m.ses.forecasts, testset2)
 ses.2
 
+#####################################################################################################
 #################################           HOLT'S METHOD           #################################
 
 # Holt's Method - df1 ---------------------------------------------
@@ -195,6 +198,7 @@ plotForecast(m.holt, m.holt.forecasts, trainset2, testset2, "Holt's")
 holt.2 = accuracy(m.holt.forecasts, testset2)
 holt.2
 
+#####################################################################################################
 #################################        HOLT-WINTER'S METHOD       #################################
 m.winters <- HoltWinters(trainset1, seasonal = "multiplicative")
 # time series has less than 2 periods
