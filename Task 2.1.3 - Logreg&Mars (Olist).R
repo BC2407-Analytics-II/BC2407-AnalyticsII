@@ -140,11 +140,13 @@ summary(test)
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
-logreg1 <- multinom(cluster~customer_city+customer_state+review_score+payment_sequential+
-                        payment_type+payment_installments+payment_value+price+freight_value+
-                        seller_city+seller_state+product_category_name_english, data=train)
+## https://stackoverflow.com/questions/36303404/too-many-weights-in-multinomial-logistic-regression-and-the-code-is-running-for
+logreg1 <- multinom(cluster~customer_state+review_score+payment_sequential+
+                        payment_type+payment_installments+payment_value+price+freight_value
+                        +seller_state+product_category_name_english, data=train, family="multinomial",MaxNWts=20000)
 summary(logreg1)
-train
+
+str(df1)
 ## Odds Ratio
 OR.logreg1 <- exp(coef(logreg1))
 OR.logreg1
@@ -188,20 +190,19 @@ accuracy.logreg1.test
 
 ## MARS: Train on Original Trainset
 set.seed(2014)
-mars1 <- earth(cluster~customer_city+customer_state+review_score+payment_sequential+
+mars1 <- earth(cluster~customer_state+review_score+payment_sequential+
                    payment_type+payment_installments+payment_value+price+freight_value+
-                   seller_city+seller_state+product_category_name_english,degree=2,data=train)
-sum(is.na(df1))
-summary(mars)
+                   seller_state+product_category_name_english,degree=2,data=train)
+summary(mars1)
 mars1.predict.train <- predict(mars1)
-
+mars1.predict.train
 mars1.predict.train <- as.data.frame(mars1.predict.train)
 mars1.predict.train$`predicted cluster` <- ifelse(
-    mars.predict.train$`1`>mars.predict.train$`2`&mars.predict.train$`1`>mars.predict.train$`3`,"1",
+    mars1.predict.train$`1`>mars1.predict.train$`2`&mars1.predict.train$`1`>mars1.predict.train$`3`,"1",
                                            ifelse(
-    mars.predict.train$`2`>mars.predict.train$`1`& mars.predict.train$`2`>mars.predict.train$`3`,"2",
+    mars1.predict.train$`2`>mars1.predict.train$`1`& mars1.predict.train$`2`>mars1.predict.train$`3`,"2",
                                            ifelse(
-    mars.predict.train$`3`>mars.predict.train$`1`& mars.predict.train$`3`>mars.predict.train$`2`,"3",
+    mars1.predict.train$`3`>mars1.predict.train$`1`& mars1.predict.train$`3`>mars1.predict.train$`2`,"3",
     "NA")))
 
 mars1.cm.train <- table(`Testset Actuals` = train$cluster, `Model Prediction` = 
@@ -264,9 +265,9 @@ summary(train.bal)
 
 ## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
-logreg.bal <- multinom(cluster~customer_city+customer_state+review_score+payment_sequential+
+logreg.bal <- multinom(cluster~ccustomer_state+review_score+payment_sequential+
                            payment_type+payment_installments+payment_value+price+freight_value+
-                           seller_city+seller_state+product_category_name_english, data=train.bal)
+                           seller_state+product_category_name_english, data=train.bal,MaxNWts=20000)
 summary(logreg.bal)
 
 ## Odds Ratio
@@ -365,7 +366,5 @@ accuracy.mars.test.bal
 varimpt <- evimp(mars.bal)
 print(varimpt)
 
-## Degree 2 has higher accuracy for train, lower accuracy for test
-## Degree 1 has higher accuracy for test, lower accuracy for train
 
 
