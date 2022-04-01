@@ -17,19 +17,19 @@ library("forecast")         # for generating h-period ahead forecasts
 #######                                   DATA PREPROCESSING                                  #######
 
 #### read in our two different datasets ####
-df = read.csv('uci_online_retail_cleaned_CLV.csv')
-df2 = read.csv('Orders_merged_CLV.csv')
+df <- read.csv('uci_online_retail_cleaned_CLV.csv')
+df2 <- read.csv('Orders_merged_CLV.csv')
 
 # we want to calculate CLV over time. therefore, we need to group sales by TIME, not by customer.
 #### remove the RFM columns ####
-rmCols = c('RECENCY', 'FREQUENCY', 'MONEY', 
+rmCols <- c('RECENCY', 'FREQUENCY', 'MONEY', 
            'RECENCY_normalised', 'FREQUENCY_normalised', 'MONEY_normalised')
-df = df[,!(names(df) %in% rmCols)]
-df2 = df2[,!(names(df2) %in% rmCols)]
+df <- df[,!(names(df) %in% rmCols)]
+df2 <- df2[,!(names(df2) %in% rmCols)]
 
 #### calculate rev ####
-df['CLV'] = df['Quantity'] * df['UnitPrice']
-df2['CLV'] = 1 * df2['price']
+df['CLV'] <- df['Quantity'] * df['UnitPrice']
+df2['CLV'] <- 1 * df2['price']
 
 #### create a month-year column ####
 df$InvoiceDate <- as.POSIXct(df$InvoiceDate,format="%Y-%m-%d %H:%M:%S",tz="Europe/London")
@@ -40,27 +40,27 @@ df['MnthYr'] <- format(as.Date(df$InvoiceDate), "%Y-%m")
 df2['MnthYr'] <- format(as.Date(df2$order_purchase_timestamp), "%Y-%m")
 
 #### group by MnthYr and sum CLV ####
-dfTS = df %>% group_by(MnthYr) %>%
+dfTS <- df %>% group_by(MnthYr) %>%
     summarise(
         total_CLV = sum(CLV),
         .groups = 'drop'
         )
-dfTS = dfTS[order(dfTS$MnthYr),]
+dfTS <- dfTS[order(dfTS$MnthYr),]
 
-df2TS = df2 %>% group_by(MnthYr) %>%
+df2TS <- df2 %>% group_by(MnthYr) %>%
     summarise(
         total_CLV = sum(CLV),
         .groups = 'drop'
     )
-df2TS = df2TS[order(df2TS$MnthYr),]
+df2TS <- df2TS[order(df2TS$MnthYr),]
 
 #### last month of df is incomplete - remove ####
-dfTS = dfTS[!(dfTS$MnthYr=='2011-12'),]
+dfTS <- dfTS[!(dfTS$MnthYr=='2011-12'),]
 
 #### 2016 data for df2 is incomplete - remove ####
-df2TS = df2TS[!(df2TS$MnthYr=='2016-09'),]
-df2TS = df2TS[!(df2TS$MnthYr=='2016-10'),]
-df2TS = df2TS[!(df2TS$MnthYr=='2016-12'),]
+df2TS <- df2TS[!(df2TS$MnthYr=='2016-09'),]
+df2TS <- df2TS[!(df2TS$MnthYr=='2016-10'),]
+df2TS <- df2TS[!(df2TS$MnthYr=='2016-12'),]
 
 #### create time series object ####
 dfTS.ts <- ts(dfTS$total_CLV, frequency = 12, start = c(2010,12))
@@ -107,7 +107,7 @@ m.ses <- HoltWinters(trainset2, seasonal = "multiplicative", beta=F, gamma=F)
 m.ses
 ## Optimal value of alpha = 0.7446712 Minimise SSE of one period ahead forecast.
 ## Coefficient a = last value of Lt.
-plot(m.ses, main = "Simple Exp Smoothing on Long Data")
+plot(m.ses, main = "Simple Exp Smoothing on Medium Data")
 #black = observed, red = one period ahead forecast
 m.ses$fitted
 m.ses.forecasts <- forecast(m.ses, h = 3)
@@ -129,7 +129,7 @@ accuracy(m.holt.forecasts, testset1)
 # Holt's Method - df2 ---------------------------------------------
 m.holt <- HoltWinters(trainset2, seasonal = "multiplicative", gamma=F)
 m.holt
-plot(m.holt, main = "Holt's Method on Long Data")
+plot(m.holt, main = "Holt's Method on Medium Data")
 m.holt$fitted
 m.holt.forecasts <- forecast(m.holt, h = 2)
 plot(m.holt.forecasts, main = "3 Period Ahead Forecasts based on Holt's")
@@ -140,4 +140,36 @@ m.winters <- HoltWinters(trainset1, seasonal = "multiplicative")
 
 m.winters <- HoltWinters(trainset2, seasonal = "multiplicative")
 
+#### bringing in a new dataset for Holt-Winters ####
 df3 = read.csv('Raw Data/timeseries.csv')
+df3['CLV'] = df3['Sales']
+df3$Order.Date <- as.POSIXct(df3$Order.Date,format="%d/%m/%Y")
+df3['MnthYr'] <- format(as.Date(df3$Order.Date), "%Y-%m")
+df3TS = df3 %>% group_by(MnthYr) %>%
+    summarise(
+        total_CLV = sum(CLV),
+        .groups = 'drop'
+    )
+df3TS = df3TS[order(df3TS$MnthYr),]
+#data is complete - don't need remove
+df3TS.ts <- ts(df3TS$total_CLV, frequency = 12, start = c(2015,1))
+df3TS.ts
+
+plot.ts(df3TS.ts, ylab = "CLV", xlab = "Year-Quarter",
+        main = "Customer Lifetime Value over time",
+        sub = "Source: Kaggle")
+
+trainset3 <- ts(df3TS.ts[-c(45:48)], frequency = 12, start = c(2015,1))
+trainset3
+testset3 <- ts(df3TS.ts[c(45:48)], frequency = 12, start = c(2018,9))
+testset3
+
+m.holt <- HoltWinters(trainset3, seasonal = "multiplicative")
+m.holt
+plot(m.holt, main = "Holt's Method on Long Data")
+m.holt$fitted
+m.holt.forecasts <- forecast(m.holt, h = 2)
+plot(m.holt.forecasts, main = "4 Period Ahead Forecasts based on Holt's")
+accuracy(m.holt.forecasts, testset3)
+
+#######                                          END                                          #######
