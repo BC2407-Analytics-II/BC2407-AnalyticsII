@@ -36,10 +36,12 @@ df$Country <- factor(df$Country)
 df$InvoiceDate <- as.POSIXct(df$InvoiceDate,format="%Y-%m-%d %H:%M:%S",tz="Europe/London")
 df$InvoiceDate_DayofWeek = factor(weekdays(df$InvoiceDate))
 df$InvoiceDate_DayofMonth = as.numeric(format(df$InvoiceDate, format = "%d"))
-df$InvoiceDate_MonthPeriod = cut(df$InvoiceDate_DayofMonth, breaks=c(0,10,20,31), labels=c("Beginning of Month", "Middle of Month", "End of Month"))
+df$InvoiceDate_MonthPeriod = cut(df$InvoiceDate_DayofMonth, breaks=c(0,10,20,31), labels=
+                                     c("Beginning of Month", "Middle of Month", "End of Month"))
 df$InvoiceDate_MonthName = factor(months(df$InvoiceDate))
 df$InvoiceDate_HourofDay = as.numeric(format(df$InvoiceDate, format = "%H"))
-df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24), labels=c("Midnight", "Morning", "Afternoon", "Evening"))
+df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24), labels=
+                                   c("Midnight", "Morning", "Afternoon", "Evening"))
 
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
@@ -49,7 +51,10 @@ df[ ,c('RECENCY',
         'MONEY',
         'RECENCY_normalised',
         'FREQUENCY_normalised',
-        'MONEY_normalised'
+        'MONEY_normalised',
+        'Description',
+        'InvoiceDate',
+        'CustomerID'
 ):=NULL]
 
 #####################################################################################################
@@ -91,7 +96,7 @@ abline(h = km$centers, col = 1:2, pch = 8,cex = 2)
 km$withinss ## [1] 460984.1  854637.4 3751597.6
 km$tot.withinss ## [1] 5067219
 
-## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 variable data
+## K-Means is a multi-variate clustering method, thus might not be suitable for 1-d or 1 var data
 ## Test a second model on ckmeans.1d.dp, an optimal 1-d kmeans clustering
 # ckmeans.1d.dp is a one-dimensional example with a two-component Gaussian mixture model
 set.seed(2014)
@@ -112,6 +117,9 @@ ckm$tot.withinss ## [1] 2881365
 df$cluster = factor(ckm$cluster)
 summary(df$cluster)
 
+df[ ,c('clv'
+):=NULL]
+
 #####################################################################################################
 #######                                    TRAIN-TEST SPLIT                                   #######
 generateTrainTest(df,0.7)
@@ -122,7 +130,7 @@ summary(test)
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
-logreg <- multinom(cluster~ InvoiceDate+CountryUnitPrice+ProductVariations, data=train)
+logreg <- multinom(cluster ~ ., data=train)
 summary(logreg)
 
 ## Odds Ratio
@@ -138,45 +146,69 @@ z <- summary(logreg)$coefficients/summary(logreg)$standard.errors
 pvalue <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
 pvalue
 
-
 logreg.step <- step(logreg)
 logreg.step
+
+## Odds Ratio
+OR.logreg.step <- exp(coef(logreg.step))
+OR.logreg.step
+
+# 95% Confidence interval
+OR.logreg.CI.step <- exp(confint(logreg.step))
+OR.logreg.CI.step
+
+# p-value
+z <- summary(logreg.step)$coefficients/summary(logreg.step)$standard.errors
+pvalue.step <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
+pvalue.step
+
+# has the same number of variables
+logreg$coefnames
+logreg.step$coefnames
 
 ## Logistic Regression: Predict on Original Trainset
 predict.cluster.train <- predict(logreg.step)
 predict.cluster.train
 
-logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = predict.cluster.train, deparse.level = 2)
+logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+                             predict.cluster.train, deparse.level = 2)
 logreg.cm.train
 
 accuracy.logreg.train <- mean(predict.cluster.train == train$cluster)
-accuracy.logreg.train
+accuracy.logreg.train #0.9391751
 
 ## Logistic Regression: Predict on Original Testset
 predict.cluster.test <- predict(logreg.step, newdata=test)
 predict.cluster.test
 
-logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test, deparse.level = 2)
+logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                            predict.cluster.test, deparse.level = 2)
 logreg.cm.test
 
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
-accuracy.logreg.test
+accuracy.logreg.test #0.9379618
 
 #####################################################################################################
 ######################################    MARS, ORIGINAL DATA   #####################################
 
 ## MARS: Train on Original Trainset
 set.seed(2014)
-mars <- earth(cluster~UnitPrice+InvoiceDate+Country+ProductVariations,degree=2,data=train)
+#UnitPrice+InvoiceDate+Country+ProductVariations
+mars <- earth(cluster~.,degree=2,data=train)
 summary(mars)
 mars.predict.train <- predict(mars)
 mars.predict.train
 mars.predict.train <- as.data.frame(mars.predict.train)
-mars.predict.train$`predicted cluster` <- ifelse(mars.predict.train$`1`>mars.predict.train$`2` & mars.predict.train$`1`>mars.predict.train$`3`,"1",
-                    ifelse(mars.predict.train$`2`>mars.predict.train$`1` & mars.predict.train$`2`>mars.predict.train$`3`,"2",
-                           ifelse(mars.predict.train$`3`>mars.predict.train$`1` & mars.predict.train$`3`>mars.predict.train$`2`,"3","NA")))
+mars.predict.train$`predicted cluster` <- ifelse(
+    mars.predict.train$`1`>mars.predict.train$`2`&mars.predict.train$`1`>mars.predict.train$`3`,"1",
+                                          ifelse(
+    mars.predict.train$`2`>mars.predict.train$`1`&mars.predict.train$`2`>mars.predict.train$`3`,"2",
+                                          ifelse(
+    mars.predict.train$`3`>mars.predict.train$`1`&mars.predict.train$`3`>mars.predict.train$`2`,"3",
+    "NA")))
 
-mars.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = mars.predict.train$`predicted cluster`, deparse.level = 2)
+mars.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+                           mars.predict.train$`predicted cluster`, deparse.level = 2)
 mars.cm.train
 
 accuracy.mars.train <- mean(mars.predict.train$`predicted cluster` == train$cluster)
@@ -189,11 +221,16 @@ print(varimpt)
 mars.predict.test <- predict(mars, newdata=test)
 mars.predict.test
 mars.predict.test <- as.data.frame(mars.predict.test)
-mars.predict.test$`predicted cluster` <- ifelse(mars.predict.test$`1`>mars.predict.test$`2` & mars.predict.test$`1`>mars.predict.test$`3`,"1",
-                                           ifelse(mars.predict.test$`2`>mars.predict.test$`1` & mars.predict.test$`2`>mars.predict.test$`3`,"2",
-                                                  ifelse(mars.predict.test$`3`>mars.predict.test$`1` & mars.predict.test$`3`>mars.predict.test$`2`,"3","NA")))
+mars.predict.test$`predicted cluster` <- ifelse(
+    mars.predict.test$`1`>mars.predict.test$`2` & mars.predict.test$`1`>mars.predict.test$`3`,"1",
+                                         ifelse(
+    mars.predict.test$`2`>mars.predict.test$`1` & mars.predict.test$`2`>mars.predict.test$`3`,"2",
+                                         ifelse(
+    mars.predict.test$`3`>mars.predict.test$`1` & mars.predict.test$`3`>mars.predict.test$`2`,"3",
+    "NA")))
 
-mars.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = mars.predict.test$`predicted cluster`, deparse.level = 2)
+mars.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                          mars.predict.test$`predicted cluster`, deparse.level = 2)
 mars.cm.test
 
 accuracy.mars.test<- mean(mars.predict.test$`predicted cluster` == test$cluster)
@@ -205,11 +242,85 @@ print(varimpt)
 #####################################################################################################
 #################################    RANDOM FOREST, ORIGINAL DATA   #################################
 
+## Random Forest: Train on Original Trainset ##
+#stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
+memory.limit(100000)
+rf = randomForest(cluster ~ . , data = train, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf
+# error rate = 3.23%
+
+par(mfrow=c(1,1))
+plot(rf)
+# Confirms error stabilised before 500 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.pred.train = predict(rf)
+
+table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+          rf.pred.train, deparse.level = 2)
+# (7657+1219+29+6)/275989 = 3.23% or 96.8% accuracy
+
+## Random Forest: Predict on Testset ##
+rf.pred.test = predict(rf, newdata=test)
+table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+          rf.pred.test, deparse.level = 2)
+#(3346+487+16+5)/118282 = 3.26% or 96.7% accuracy
+
+var.impt.RF <- importance(rf)
+
+varImpPlot(rf, type = 1)
+# Country is the most important by a long shot
+
+## Random Forest: Optimise B and RSF ##
+#################################################################
+##################### FUNCTION: calculateRF #####################
+#################################################################
+### This function takes in a dataframe, the random forest equation, a list of B values, and a list
+### of RSF values to test
+### and returns a matrix summarising random forest performance for each combination of B and RSF
+calculateRF <- function(data, eqn, rows, cols) {
+    #generates matrix for the specified rows and cols
+    mat = matrix(rep(0,length(cols)*length(rows)), nrow = length(cols), dimnames = list(rows, cols))
+    #iterate through the values
+    for (row in 1:nrow(mat)) {
+        for (col in 1:ncol(mat)) {
+            set.seed(1) #Bootstrap + RSF
+            #run random forest with the specified B / ntree / row and RSF / mtry / col
+            #get the value in the row and column of the matrix and convert from string to int.
+            #these are the B and RSF values that we want
+            Bval = strtoi(rownames(mat)[row], base=0L)
+            RSFval = strtoi(colnames(mat)[col], base=0L)
+            tempModel = randomForest(eqn, data, importance = T,
+                                     ntree = Bval, #B
+                                     mtry = RSFval, #RSF size
+            )$err.rate #get the error rate
+            result = tempModel[nrow(tempModel),1] #select the last row, first value. this is the OOB error
+            mat[row, col] = result #assign to matrix
+            cat('running RF with B =', Bval, 'and RSF =', RSFval, 'gave us error =', result, '\n')
+        }
+    }
+    return(mat)
+}
+#################### END FUNCTION DEFINITION ####################
+#################################################################
+
+mat = calculateRF(test, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test)-1)), ncol(test)-1))
+mat
+# in this case, increasing B and RSF each will result in a decrease in error rate.
+# however, improvement from B = 100 to 500 decreases error rate only by a marginal amount.
+# choose B = 100
+# RSF = 11 yields the lowest error rate. however, given the observed dominance of the country
+# variable, this is a stable model and hence bagging will become not useful due to the dominant X.
+# different bootstrap samples will produce the same or almost the same model.
+# therefore, we will just use RSF = sqrt(variables).
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 
+
 #####################################################################################################
-########################################    BALANCING DATA   ########################################
+#######                                     BALANCING DATA                                    #######
 
 ## Random sample from majority class Default = No and combine with Default = Yes to form new trainset
 majority <- train[cluster == 1]
@@ -253,7 +364,8 @@ logreg.step.bal
 predict.cluster.train.bal <- predict(logreg.step.bal)
 predict.cluster.train.bal
 
-logreg.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = predict.cluster.train.bal, deparse.level = 2)
+logreg.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
+                                 predict.cluster.train.bal, deparse.level = 2)
 logreg.cm.train.bal
 
 accuracy.logreg.train.bal <- mean(predict.cluster.train.bal == train.bal$cluster)
@@ -263,12 +375,12 @@ accuracy.logreg.train.bal ## [1] 0.3929632
 predict.cluster.test.bal <- predict(logreg.step.bal, newdata=test)
 predict.cluster.test.bal
 
-logreg.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test.bal, deparse.level = 2)
+logreg.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                                predict.cluster.test.bal, deparse.level = 2)
 logreg.cm.test.bal
 
 accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
 accuracy.logreg.test.bal ## [1] 0.6791143
-
 
 #####################################################################################################
 ######################################    MARS, BALANCED DATA   #####################################
@@ -280,11 +392,18 @@ summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
 mars.predict.train.bal <- as.data.frame(mars.predict.train.bal)
-mars.predict.train.bal$`predicted cluster` <- ifelse(mars.predict.train.bal$`1`>mars.predict.train.bal$`2` & mars.predict.train.bal$`1`>mars.predict.train.bal$`3`,"1",
-                                                 ifelse(mars.predict.train.bal$`2`>mars.predict.train.bal$`1` & mars.predict.train.bal$`2`>mars.predict.train.bal$`3`,"2",
-                                                        ifelse(mars.predict.train.bal$`3`>mars.predict.train.bal$`1` & mars.predict.train.bal$`3`>mars.predict.train.bal$`2`,"3","NA")))
+mars.predict.train.bal$`predicted cluster` <- ifelse(
+    mars.predict.train.bal$`1`>mars.predict.train.bal$`2`&mars.predict.train.bal$`1`>
+        mars.predict.train.bal$`3`,"1",
+                                              ifelse(
+    mars.predict.train.bal$`2`>mars.predict.train.bal$`1`&mars.predict.train.bal$`2`>
+        mars.predict.train.bal$`3`,"2",
+                                              ifelse(
+    mars.predict.train.bal$`3`>mars.predict.train.bal$`1`&mars.predict.train.bal$`3`>
+        mars.predict.train.bal$`2`,"3","NA")))
 
-mars.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = mars.predict.train.bal$`predicted cluster`, deparse.level = 2)
+mars.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
+                               mars.predict.train.bal$`predicted cluster`, deparse.level = 2)
 mars.cm.train.bal
 
 accuracy.mars.train.bal <- mean(mars.predict.train.bal$`predicted cluster` == train.bal$cluster)
@@ -297,11 +416,18 @@ print(varimpt)
 mars.predict.test.bal <- predict(mars.bal, newdata=test)
 mars.predict.test.bal
 mars.predict.test.bal <- as.data.frame(mars.predict.test.bal)
-mars.predict.test.bal$`predicted cluster` <- ifelse(mars.predict.test.bal$`1`>mars.predict.test.bal$`2` & mars.predict.test.bal$`1`>mars.predict.test.bal$`3`,"1",
-                                                ifelse(mars.predict.test.bal$`2`>mars.predict.test.bal$`1` & mars.predict.test.bal$`2`>mars.predict.test.bal$`3`,"2",
-                                                       ifelse(mars.predict.test.bal$`3`>mars.predict.test.bal$`1` & mars.predict.test.bal$`3`>mars.predict.test.bal$`2`,"3","NA")))
+mars.predict.test.bal$`predicted cluster` <- ifelse(
+    mars.predict.test.bal$`1`>mars.predict.test.bal$`2`&mars.predict.test.bal$`1`>
+        mars.predict.test.bal$`3`,"1",
+                                             ifelse(
+    mars.predict.test.bal$`2`>mars.predict.test.bal$`1`&mars.predict.test.bal$`2`>
+        mars.predict.test.bal$`3`,"2",
+                                             ifelse(
+    mars.predict.test.bal$`3`>mars.predict.test.bal$`1` & mars.predict.test.bal$`3`>
+        mars.predict.test.bal$`2`,"3","NA")))
 
-mars.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = mars.predict.test.bal$`predicted cluster`, deparse.level = 2)
+mars.cm.test.bal <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                              mars.predict.test.bal$`predicted cluster`, deparse.level = 2)
 mars.cm.test.bal
 
 accuracy.mars.test.bal <- mean(mars.predict.test.bal$`predicted cluster` == test$cluster)
@@ -312,4 +438,37 @@ print(varimpt)
 
 ## Degree 2 has higher accuracy for train, lower accuracy for test
 ## Degree 1 has higher accuracy for test, lower accuracy for train
+
+#####################################################################################################
+#################################    RANDOM FOREST, BALANCED DATA   #################################
+
+memory.limit(100000)
+rf.bal = randomForest(cluster ~ . , data = train, B = 100, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf.bal
+# error rate = %
+
+par(mfrow=c(1,1))
+plot(rf.bal)
+# Confirms error stabilised before 100 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.bal.pred.train = predict(rf.bal)
+
+table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+          rf.bal.pred.train, deparse.level = 2)
+# ()/275989 = % or % accuracy
+
+## Random Forest: Predict on Testset ##
+rf.bal.pred.test = predict(rf.bal, newdata=test)
+table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+          rf.bal.pred.test, deparse.level = 2)
+#()/118282 = % or % accuracy
+
+var.impt.RF.bal <- importance(rf.bal)
+
+varImpPlot(rf.bal, type = 1)
+#  is the most important by a long shot
+
 
