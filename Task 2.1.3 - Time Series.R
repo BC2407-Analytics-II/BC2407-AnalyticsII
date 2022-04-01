@@ -134,24 +134,28 @@ m.ses.forecasts <- forecast(m.ses, h = FORECAST_PERIODS)
 #################################################################
 ### This function takes in a forecast object (without quotes), and number of predictions
 ### and prints the time-series in ggplot.
-plotForecast <- function(forecast, testset) {
-    options(scipen=10000)                                   
+plotForecast <- function(model, forecast, trainset, testset, method) {
+    options(scipen=10000)                      
+    
+    forecast_plot = autoplot(model$fitted[,1], series = 'Forecasted') + 
+        autolayer(forecast, series = 'Forecasted') 
+    
     print(
-        autoplot(forecast) + 
-        scale_x_continuous(labels = function(x) {format(date_decimal(x), "%b %Y")}) +
-        labs(y='Customer Lifetime Value', x='Month-Year',
-             title=paste(FORECAST_PERIODS,'Period Ahead Forecasts based on SES'),
-        ) +
+        forecast_plot +
+            autolayer(trainset, series = 'Actual') +
+            autolayer(testset, series = 'Actual') +
+            scale_x_continuous(labels = function(x) {format(date_decimal(x), "%b %Y")}) +
+            labs(y='Customer Lifetime Value', x='Month-Year',
+                title=paste(FORECAST_PERIODS,'Period Ahead Forecasts based on',method),
+                ) +
         change_font + 
-        theme(plot.title = element_text(hjust = 0.5)) +
-        autolayer(testset, series = "Actual") +
-        autolayer(forecast, series="Forecasted")
+        theme(plot.title = element_text(hjust = 0.5))
     )
 }
 #################### END FUNCTION DEFINITION ####################
 #################################################################
 
-plotForecast(m.ses.forecasts, testset1)
+plotForecast(m.ses, m.ses.forecasts, trainset1, testset1, "SES")
 
 ses.1 = accuracy(m.ses.forecasts, testset1)
 ses.1
@@ -165,7 +169,7 @@ plot(m.ses, main = "Simple Exp Smoothing on Medium Data")
 #black = observed, red = one period ahead forecast
 m.ses$fitted
 m.ses.forecasts <- forecast(m.ses, h = FORECAST_PERIODS)
-plotForecast(m.ses.forecasts, testset2)
+plotForecast(m.ses, m.ses.forecasts, trainset2, testset2, "SES")
 ses.2 = accuracy(m.ses.forecasts, testset2)
 ses.2
 
@@ -177,7 +181,7 @@ m.holt
 plot(m.holt, main = "Holt's Method on Short Data")
 m.holt$fitted
 m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
-plotForecast(m.holt.forecasts, testset1)
+plotForecast(m.holt, m.holt.forecasts, trainset1, testset1, "Holt's")
 holt.1 = accuracy(m.holt.forecasts, testset1)
 holt.1
 
@@ -187,7 +191,7 @@ m.holt
 plot(m.holt, main = "Holt's Method on Medium Data")
 m.holt$fitted
 m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
-plotForecast(m.holt.forecasts, testset2)
+plotForecast(m.holt, m.holt.forecasts, trainset2, testset2, "Holt's")
 holt.2 = accuracy(m.holt.forecasts, testset2)
 holt.2
 
@@ -227,7 +231,7 @@ m.holt <- HoltWinters(trainset3, seasonal = "multiplicative", gamma=F)
 m.holt
 plot(m.holt, main = "Holt's Method on Long Data")
 m.holt.forecasts <- forecast(m.holt, h = FORECAST_PERIODS)
-plotForecast(m.holt.forecasts, testset3)
+plotForecast(m.holt, m.holt.forecasts, trainset3, testset3, "Holt's")
 holt.3 = accuracy(m.holt.forecasts, testset3)
 holt.3
 
@@ -236,46 +240,10 @@ m.winters
 plot(m.winters, main = "Holt-Winter's Method on Long Data")
 m.winters.forecasts <- forecast(m.winters, h = FORECAST_PERIODS)
 plot(m.winters.forecasts)
-plotForecast(m.winters.forecasts, testset3)
+plotForecast(m.winters, m.winters.forecasts, trainset3, testset3, "Holt's")
 winter.3 = accuracy(m.winters.forecasts, testset3)
 winter.3
 
 #######                                          END                                          #######
 
 
-forecastt <- predict(m.holt, n.ahead = 3, prediction.interval = T, level = 0.95)
-plot(m.holt)
-plot(m.holt$fitted[,1])
-
-
-#HWplot.R
-library(ggplot2)
-library(reshape)
-HWplot<-function(ts_object,  n.ahead=4,  CI=.95,  error.ribbon='green', line.size=1){
-    
-    hw_object<-HoltWinters(ts_object)
-    
-    forecast<-predict(hw_object,  n.ahead=n.ahead,  prediction.interval=T,  level=CI)
-    
-    
-    for_values<-data.frame(time=round(time(forecast),  3),  value_forecast=as.data.frame(forecast)$fit,  dev=as.data.frame(forecast)$upr-as.data.frame(forecast)$fit)
-    
-    fitted_values<-data.frame(time=round(time(hw_object$fitted),  3),  value_fitted=as.data.frame(hw_object$fitted)$xhat)
-    
-    actual_values<-data.frame(time=round(time(hw_object$x),  3),  Actual=c(hw_object$x))
-    
-    
-    graphset<-merge(actual_values,  fitted_values,  by='time',  all=TRUE)
-    graphset<-merge(graphset,  for_values,  all=TRUE,  by='time')
-    graphset[is.na(graphset$dev),  ]$dev<-0
-    
-    graphset$Fitted<-c(rep(NA,  NROW(graphset)-(NROW(for_values) + NROW(fitted_values))),  fitted_values$value_fitted,  for_values$value_forecast)
-    
-    
-    graphset.melt<-melt(graphset[, c('time', 'Actual', 'Fitted')], id='time')
-    
-    p<-ggplot(graphset.melt,  aes(x=time,  y=value)) + geom_ribbon(data=graphset, aes(x=time, y=Fitted, ymin=Fitted-dev,  ymax=Fitted + dev),  alpha=.2,  fill=error.ribbon) + geom_line(aes(colour=variable), size=line.size) + geom_vline(x=max(actual_values$time), xintercept=0,  lty=2) + xlab('Time') + ylab('Value') + scale_colour_hue('')
-    return(p)
-}
-
-HWplot(trainset3, n.ahead = 3)
