@@ -52,6 +52,8 @@ generateTrainTest(orders_all_1, 0.7)
 
 ####ML Models####
 
+#------------------------------Quantile Regression------------------------------#
+
 ###Creating Quantile Regression Table###----
 taus <- c(.1, .25, .5, .75, .90)
 variable = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
@@ -302,6 +304,28 @@ for( i in 1:length(taus)){
 
 
 ###################################################
+
+
+#-------------------------------Linear Regression-------------------------------#
+
+#training linear regression model on orders_all_1
+review_lr <- lm(review_score ~ ., data = orders_all_1)
+summary(review_lr)
+
+summary(review_lr)$r.squared
+summary(review_lr)$adj.r.squared
+Data <- c('orders_all_1', 'orders_all_2')
+RMSE.LR <- round(sqrt(mean(residuals(review_lr)^2)),3)
+
+#training linear regression model on orders_all_2
+review_lr2 <- lm(review_score ~ ., data = orders_all_2)
+summary(review_lr2)
+
+summary(review_lr2)$r.squared
+summary(review_lr2)$adj.r.squared
+RMSE.LR <- c(RMSE.LR, round(sqrt(mean(residuals(review_lr2)^2)),3))
+
+RMSE_table <- data.frame(Data, RMSE.LR)
 
 #------------------------------MARS Implementation------------------------------#
 
