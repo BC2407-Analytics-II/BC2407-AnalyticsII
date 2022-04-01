@@ -106,7 +106,6 @@ ckm
 # Cluster centers: 1. 4.052515 | 2. 29.905174 | 3. 55.042750
 # Slight difference from above km$centers
 ## Visualise the clusters
-par(mfrow=c(1,2))
 plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
 abline(h = ckm$centers, col = 1:2, pch = 8,cex = 2)
 ckm$withinss ## [1] 2071400.31  759478.47   50486.51
@@ -130,7 +129,11 @@ summary(test)
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
+<<<<<<< Updated upstream
 logreg <- multinom(cluster ~ ., data=train)
+=======
+logreg <- multinom(cluster~ InvoiceDate+Country+UnitPrice+ProductVariations, data=train)
+>>>>>>> Stashed changes
 summary(logreg)
 
 ## Odds Ratio
@@ -170,9 +173,13 @@ logreg.step$coefnames
 predict.cluster.train <- predict(logreg.step)
 predict.cluster.train
 
+<<<<<<< Updated upstream
 logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
                              predict.cluster.train, deparse.level = 2)
 logreg.cm.train
+=======
+logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = predict.cluster.train, deparse.level = 2)
+>>>>>>> Stashed changes
 
 accuracy.logreg.train <- mean(predict.cluster.train == train$cluster)
 accuracy.logreg.train #0.9391751
@@ -181,12 +188,19 @@ accuracy.logreg.train #0.9391751
 predict.cluster.test <- predict(logreg.step, newdata=test)
 predict.cluster.test
 
+<<<<<<< Updated upstream
 logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
                             predict.cluster.test, deparse.level = 2)
 logreg.cm.test
+=======
+logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test, deparse.level = 2)
+View(logreg.cm.test)
+>>>>>>> Stashed changes
 
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
 accuracy.logreg.test #0.9379618
+
+c(accuracy.logreg.train,accuracy.logreg.test)
 
 #####################################################################################################
 ######################################    MARS, ORIGINAL DATA   #####################################
@@ -196,6 +210,10 @@ set.seed(2014)
 #UnitPrice+InvoiceDate+Country+ProductVariations
 mars <- earth(cluster~.,degree=2,data=train)
 summary(mars)
+
+str(mars)
+View(mars$coefficients)
+
 mars.predict.train <- predict(mars)
 mars.predict.train
 mars.predict.train <- as.data.frame(mars.predict.train)

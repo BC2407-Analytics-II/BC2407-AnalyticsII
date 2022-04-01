@@ -58,12 +58,17 @@ df1[ ,c('product_id',
         'product_length_cm',
         'product_height_cm',
         'product_width_cm',
-        'product_category_name'
+        'product_category_name',
+        'order_status',
+        'customer_city',
+        'seller_city'
 ):=NULL]
+sum(is.na(df1))
+df1[!complete.cases(df1), ]
 df1 <- na.omit(df1)
 
 ## Convert to categorical
-cat <- c("order_status","customer_city","customer_state","payment_type","seller_city",
+cat <- c("order_status","customer_state","payment_type",
          "seller_state","product_category_name_english")
 df1 <- df1 %>%
   mutate_at(cat, list(~factor(.)))
@@ -116,7 +121,7 @@ ckm1 <- Ckmeans.1d.dp(df1$clv, 3) ## Not required to specify nstart since it wil
 ckm1
 ckm1$size
 # Cluster Size: 1. 94327 | 2. 12766 | 3. 730
-# Cluster centers: 1. 1.121630 | 2. 1.813204 | 3. 4.103957
+# Cluster centers: 1. 1. 121630 | 2. 1.813204 | 3. 4.103957
 # Slight difference from above km$centers
 ## Visualise the clusters
 plot(df1$clv,col=(ckm1$cluster+1),main ="CK-Means Clustering Results",xlab = "",ylab="",pch=20,cex=2)
@@ -313,9 +318,9 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~customer_city+customer_state+review_score+payment_sequential+
+mars.bal <- earth(cluster~customer_state+review_score+payment_sequential+
                       payment_type+payment_installments+payment_value+price+freight_value+
-                      seller_city+seller_state+product_category_name_english,degree=1,data=train.bal)
+                      seller_state+product_category_name_english,degree=1,data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
