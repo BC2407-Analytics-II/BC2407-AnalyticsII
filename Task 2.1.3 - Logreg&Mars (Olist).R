@@ -191,7 +191,7 @@ rf
 # error rate = 9.1%
 
 par(mfrow=c(1,1))
-plot(rf)
+plot(rf, main = 'Random Forest Error Rate on Original Olist Dataset')
 # Confirms error stabilised before 500 trees.
 
 ## Random Forest: Predict on Trainset ##
@@ -211,9 +211,47 @@ rf.test.confMat
 
 var.impt.RF <- importance(rf)
 
-varImpPlot(rf, type = 1)
+varImpPlot(rf, type = 1, main = 'Variable Importance on Original Olist Dataset')
 #product_category_name_english is most important, followed by review_score and payment_installments
 #https://stats.stackexchange.com/questions/457953/r-importance-of-categorical-variables-in-random-forests
+
+## Random Forest: Optimise B and RSF ##
+#################################################################
+##################### FUNCTION: calculateRF #####################
+#################################################################
+### This function takes in a dataframe, the random forest equation, a list of B values, and a list
+### of RSF values to test
+### and returns a matrix summarising random forest performance for each combination of B and RSF
+calculateRF <- function(data, eqn, rows, cols) {
+    #generates matrix for the specified rows and cols
+    mat = matrix(rep(0,length(cols)*length(rows)), nrow = length(cols), dimnames = list(rows, cols))
+    #iterate through the values
+    for (row in 1:nrow(mat)) {
+        for (col in 1:ncol(mat)) {
+            set.seed(1) #Bootstrap + RSF
+            #run random forest with the specified B / ntree / row and RSF / mtry / col
+            #get the value in the row and column of the matrix and convert from string to int.
+            #these are the B and RSF values that we want
+            Bval = strtoi(rownames(mat)[row], base=0L)
+            RSFval = strtoi(colnames(mat)[col], base=0L)
+            tempModel = randomForest(eqn, data, importance = T,
+                                     ntree = Bval, #B
+                                     mtry = RSFval, #RSF size
+            )$err.rate #get the error rate
+            result = tempModel[nrow(tempModel),1] #select the last row, first value. 
+            # this is the OOB error
+            mat[row, col] = result #assign to matrix
+            cat('running RF with B =', Bval, 'and RSF =', RSFval, 'gave us error =', result, '\n')
+        }
+    }
+    return(mat)
+}
+#################### END FUNCTION DEFINITION ####################
+#################################################################
+
+set.seed(2014)
+mat = calculateRF(test2, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test2)-1)), ncol(test2)-1))
+mat
 
 library(beepr)
 beep()
@@ -362,7 +400,7 @@ rf.bal
 # error rate = 35.69%
 
 par(mfrow=c(1,1))
-plot(rf.bal)
+plot(rf.bal, main = 'Random Forest Error Rate on Balanced Olist Dataset')
 # Error 
 
 ## Random Forest: Predict on Trainset ##
@@ -382,8 +420,12 @@ rf.bal.test.confMat
 
 var.impt.RF.bal <- importance(rf.bal)
 
-varImpPlot(rf.bal, type = 1)
+varImpPlot(rf.bal, type = 1, main = 'Variable Importance on Balanced Olist Dataset')
 # still product_category_name_english, review_score, and payment_installments
+
+set.seed(2014)
+mat.bal <- calculateRF(train2.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train2.bal)-1)), ncol(train.bal)-1))
+mat.bal
 
 library(beepr)
 beep()

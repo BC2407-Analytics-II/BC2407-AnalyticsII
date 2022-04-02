@@ -13,6 +13,7 @@ source("../helperFns.R")    # import list of helper functions we've written sepa
 library("dplyr")            # for group_by
 library("forecast")         # for generating h-period ahead forecasts
 library("lubridate")        # for date_decimal
+library("ggplot2")
 
 #####################################################################################################
 #######                                   DATA PREPROCESSING                                  #######
