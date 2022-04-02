@@ -376,28 +376,57 @@ Accuracy_table <- data.frame(Data, Accuracy.LR)
 
 library(earth)
 
+#training linear regression model on orders_all_1
+
 #MARS Degree 1
 set.seed(22)
 
-reviews_mars <- earth(review_score ~ . , degree = 1, data = train)
+reviews_mars <- earth(review_score ~ . , degree = 1, data = train_orders_all_1)
 summary(reviews_mars)
 
-calculateAccuracy(reviews_mars, test) #accuracy = 0.2841064
+calculateAccuracy2(reviews_mars, test_orders_all_1)
 
 #MARS Degree 2
 set.seed(22)
 
-reviews_mars2 <- earth(review_score ~ . , degree = 2, data = train)
+reviews_mars2 <- earth(review_score ~ . , degree = 2, data = train_orders_all_1)
 summary(reviews_mars2)
 
-calculateAccuracy(reviews_mars2, test) #best accuracy = 0.2867347
+calculateAccuracy2(reviews_mars2, test_orders_all_1)
 
-#MARS with 10 fold cross validation
+#training linear regression model on orders_all_1
+
+#MARS Degree 1
 set.seed(22)
 
-earth(review_score ~ . , degree = 2, trace = 3, data = train)
-reviews_mars_10fold <- earth(review_score ~ . , pmethod = "cv", degree = 1, nfold = 10, 
-                             ncross = 1, data = train)
-summary(reviews_mars_10fold)
+reviews_mars <- earth(review_score ~ . , degree = 1, data = train_orders_all_1)
+summary(reviews_mars)
 
-calculateAccuracy(reviews_mars_10fold, test) #accuracy = 0.2841064
+calculateAccuracy2(reviews_mars, test_orders_all_1)
+
+#MARS Degree 2
+set.seed(22)
+
+reviews_mars2 <- earth(review_score ~ . , degree = 2, data = train_orders_all_1)
+summary(reviews_mars2)
+
+calculateAccuracy2(reviews_mars2, test_orders_all_1)
+
+
+#training linear regression model on orders_all_2
+
+#MARS Degree 1
+set.seed(22)
+
+reviews_mars_1 <- earth(review_score ~ . , degree = 1, data = train_orders_all_2)
+summary(reviews_mars_1)
+
+calculateAccuracy2(reviews_mars_1, test_orders_all_2)
+
+#MARS Degree 2
+set.seed(22)
+
+reviews_mars_2 <- earth(review_score ~ . , degree = 2, data = train_orders_all_2)
+summary(reviews_mars_2)
+
+calculateAccuracy2(reviews_mars_2, test_orders_all_2)
