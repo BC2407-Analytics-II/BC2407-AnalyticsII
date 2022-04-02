@@ -402,7 +402,9 @@ set.seed(22)
 reviews_mars <- earth(review_score ~ . , degree = 1, data = train_orders_all_1)
 summary(reviews_mars)
 
-calculateAccuracy2(reviews_mars, test_orders_all_1)
+Dataset <- c('orders_all_1', 'orders_all_1', 'orders_all_2', 'orders_all_2')
+Degree <- c(1,2,1,2)
+Accuracy.MARS <- round(calculateAccuracy2(reviews_mars, test_orders_all_1), 3)
 
 #MARS Degree 2
 set.seed(22)
@@ -410,8 +412,7 @@ set.seed(22)
 reviews_mars2 <- earth(review_score ~ . , degree = 2, data = train_orders_all_1)
 summary(reviews_mars2)
 
-calculateAccuracy2(reviews_mars2, test_orders_all_1)
-
+Accuracy.MARS <- c(Accuracy.MARS, round(calculateAccuracy2(reviews_mars2, test_orders_all_1), 3))
 
 #training linear regression model on orders_all_2
 
@@ -421,7 +422,7 @@ set.seed(22)
 reviews_mars_1 <- earth(review_score ~ . , degree = 1, data = train_orders_all_2)
 summary(reviews_mars_1)
 
-calculateAccuracy2(reviews_mars_1, test_orders_all_2)
+Accuracy.MARS <- c(Accuracy.MARS, round(calculateAccuracy2(reviews_mars_1, test_orders_all_2), 3))
 
 #MARS Degree 2
 set.seed(22)
@@ -429,4 +430,7 @@ set.seed(22)
 reviews_mars_2 <- earth(review_score ~ . , degree = 2, data = train_orders_all_2)
 summary(reviews_mars_2)
 
-calculateAccuracy2(reviews_mars_2, test_orders_all_2)
+Accuracy.MARS <- c(Accuracy.MARS, round(calculateAccuracy2(reviews_mars_2, test_orders_all_2), 3))
+
+#table of accuracy for MARS models
+Accuracy_MARS_table <- data.frame(Dataset, Degree, Accuracy.MARS)
