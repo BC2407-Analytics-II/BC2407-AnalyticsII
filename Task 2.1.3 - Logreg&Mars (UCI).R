@@ -345,7 +345,6 @@ beep()
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 
-
 #####################################################################################################
 #######                                     BALANCING DATA                                    #######
 
@@ -362,6 +361,50 @@ middle.chosen <- middle[chosen2]
 ## Combine two data tables by appending the rows 
 train.bal <- rbind(majority.chosen,middle.chosen, minority) 
 summary(train.bal) 
+
+#####################################################################################################
+#################################    RANDOM FOREST, BALANCED DATA   #################################
+
+set.seed(2014)
+memory.limit(100000)
+rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf.bal
+# error rate = 8.12%
+
+par(mfrow=c(1,1))
+plot(rf.bal)
+# Error needed more trees to stabilise, but still stabilised at about 200 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.bal.pred.train <- predict(rf.bal)
+
+rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
+                                  rf.bal.pred.train, deparse.level = 2)
+rf.bal.train.confMat
+# (680+15+591)/15831 = 8.12% or 91.9% accuracy
+
+## Random Forest: Predict on Testset ##
+rf.bal.pred.test <- predict(rf.bal, newdata=test)
+rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                                 rf.bal.pred.test, deparse.level = 2)
+rf.bal.test.confMat
+#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
+
+var.impt.RF.bal <- importance(rf.bal)
+
+varImpPlot(rf.bal, type = 1)
+# Country became even more important
+
+set.seed(2014)
+mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
+mat.bal
+# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
+# accurate measure. thus, we will stick to it.
+
+library(beepr)
+beep()
 
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
@@ -466,46 +509,3 @@ print(varimpt)
 ## Degree 2 has higher accuracy for train, lower accuracy for test
 ## Degree 1 has higher accuracy for test, lower accuracy for train
 
-#####################################################################################################
-#################################    RANDOM FOREST, BALANCED DATA   #################################
-
-set.seed(2014)
-memory.limit(100000)
-rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
-
-## Random Forest: Get Model Stats ##
-rf.bal
-# error rate = 8.12%
-
-par(mfrow=c(1,1))
-plot(rf.bal)
-# Error needed more trees to stabilise, but still stabilised at about 200 trees.
-
-## Random Forest: Predict on Trainset ##
-rf.bal.pred.train <- predict(rf.bal)
-
-rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
-          rf.bal.pred.train, deparse.level = 2)
-rf.bal.train.confMat
-# (680+15+591)/15831 = 8.12% or 91.9% accuracy
-
-## Random Forest: Predict on Testset ##
-rf.bal.pred.test <- predict(rf.bal, newdata=test)
-rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
-          rf.bal.pred.test, deparse.level = 2)
-rf.bal.test.confMat
-#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
-
-var.impt.RF.bal <- importance(rf.bal)
-
-varImpPlot(rf.bal, type = 1)
-# Country became even more important
-
-set.seed(2014)
-mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
-mat.bal
-# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
-# accurate measure. thus, we will stick to it.
-
-library(beepr)
-beep()

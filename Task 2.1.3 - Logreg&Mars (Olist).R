@@ -272,18 +272,15 @@ df1.copy$product_category_name_english <- sub("fashio", "fashion", df1.copy$prod
 df1.copy$product_category_name_english = as.factor(df1.copy$product_category_name_english)
 str(df1.copy)
 #remove seller_city, customer_city for now
-df1.copy.noCity = df1.copy
-df1.copy.noCity[ ,c(
-        'customer_city',
-        'seller_city',
+df1.copy[ ,c(
         'payment_value'
 ):=NULL]
 
 ## Train-test split ##
 set.seed(3)
-sample <- sample.int(n = nrow(df1.copy.noCity), size = floor(0.7*nrow(df1.copy.noCity)), replace = F)
-train2 <- df1.copy.noCity[sample, ]
-test2  <- df1.copy.noCity[-sample, ]
+sample <- sample.int(n = nrow(df1.copy), size = floor(0.7*nrow(df1.copy)), replace = F)
+train2 <- df1.copy[sample, ]
+test2  <- df1.copy[-sample, ]
 
 ## Random Forest: Train on Original Trainset ##
 set.seed(2014)
@@ -316,6 +313,8 @@ rf.test.confMat
 var.impt.RF <- importance(rf)
 
 varImpPlot(rf, type = 1)
+#product_category_name_english is most important, followed by review_score and payment_installments
+#https://stats.stackexchange.com/questions/457953/r-importance-of-categorical-variables-in-random-forests
 
 library(beepr)
 beep()
@@ -323,7 +322,7 @@ beep()
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 
 #####################################################################################################
-########################################    BALANCING DATA   ########################################
+#######                                     BALANCING DATA                                    #######
 
 ## Random sample from majority class Default = No and combine with Default = Yes to form new trainset
 majority <- train[cluster == 1]
@@ -338,6 +337,60 @@ middle.chosen <- middle[chosen2]
 ## Combine two data tables by appending the rows 
 train.bal <- rbind(majority.chosen,middle.chosen, minority) 
 summary(train.bal) 
+
+#####################################################################################################
+#######                     BALANCING DATA for Reduced Product Categories                     #######
+
+majority2 <- train2[cluster == 1]
+middle2 <- train2[cluster == 2]
+minority2 <- train2[cluster == 3] 
+## Randomly sample the row numbers to be in trainset. Same sample size as minority cases. 
+chosen <- sample(seq(1:nrow(majority2)), size = nrow(minority2)) 
+chosen2 <- sample(seq(1:nrow(middle2)), size = nrow(minority2))
+## Subset the original trainset based on randomly chosen row numbers. 
+majority2.chosen <- majority2[chosen] 
+middle2.chosen <- middle2[chosen2]
+## Combine two data tables by appending the rows 
+train2.bal <- rbind(majority2.chosen,middle2.chosen, minority2) 
+summary(train2.bal) 
+
+#####################################################################################################
+#################################    RANDOM FOREST, BALANCED DATA   #################################
+
+set.seed(2014)
+memory.limit(100000)
+rf.bal = randomForest(cluster ~ . , data = train2.bal, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf.bal
+# error rate = 35.69%
+
+par(mfrow=c(1,1))
+plot(rf.bal)
+# Error 
+
+## Random Forest: Predict on Trainset ##
+rf.bal.pred.train <- predict(rf.bal)
+
+rf.bal.train.confMat <- table(`Trainset Actuals` = train2.bal$cluster, `Model Prediction` = 
+                                  rf.bal.pred.train, deparse.level = 2)
+rf.bal.train.confMat
+# (188+31+205+66+36+35)/1572 = 35.69% or 64.3%% accuracy
+
+## Random Forest: Predict on Testset ##
+rf.bal.pred.test <- predict(rf.bal, newdata=test2)
+rf.bal.test.confMat <- table(`Testset Actuals` = test2$cluster, `Model Prediction` = 
+                                 rf.bal.pred.test, deparse.level = 2)
+rf.bal.test.confMat
+#(9833+2121+1284+489+17+21)/32346 = 42.6% or 57.4% accuracy
+
+var.impt.RF.bal <- importance(rf.bal)
+
+varImpPlot(rf.bal, type = 1)
+# still product_category_name_english, review_score, and payment_installments
+
+library(beepr)
+beep()
 
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
@@ -445,46 +498,3 @@ accuracy.mars.test.bal
 varimpt <- evimp(mars.bal)
 print(varimpt)
 
-#####################################################################################################
-#################################    RANDOM FOREST, BALANCED DATA   #################################
-
-set.seed(2014)
-memory.limit(100000)
-rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
-
-## Random Forest: Get Model Stats ##
-rf.bal
-# error rate = 8.12%
-
-par(mfrow=c(1,1))
-plot(rf.bal)
-# Error needed more trees to stabilise, but still stabilised at about 200 trees.
-
-## Random Forest: Predict on Trainset ##
-rf.bal.pred.train <- predict(rf.bal)
-
-rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
-                                  rf.bal.pred.train, deparse.level = 2)
-rf.bal.train.confMat
-# (680+15+591)/15831 = 8.12% or 91.9% accuracy
-
-## Random Forest: Predict on Testset ##
-rf.bal.pred.test <- predict(rf.bal, newdata=test)
-rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
-                                 rf.bal.pred.test, deparse.level = 2)
-rf.bal.test.confMat
-#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
-
-var.impt.RF.bal <- importance(rf.bal)
-
-varImpPlot(rf.bal, type = 1)
-# Country became even more important
-
-set.seed(2014)
-mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
-mat.bal
-# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
-# accurate measure. thus, we will stick to it.
-
-library(beepr)
-beep()
