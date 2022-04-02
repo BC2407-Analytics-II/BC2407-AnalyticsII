@@ -459,7 +459,7 @@ c(accuracy.logreg.train.bal,accuracy.logreg.test.bal)
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~.,degree=1,glm=list(family=binomial),data=train.bal)
+mars.bal <- earth(cluster~.,degree=2,glm=list(family=binomial),data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
@@ -504,6 +504,8 @@ mars.cm.test.bal
 
 accuracy.mars.test.bal <- mean(mars.predict.test.bal$`predicted cluster` == test$cluster)
 accuracy.mars.test.bal 
+
+c(accuracy.mars.train.bal,accuracy.mars.test.bal)
 
 varimpt <- evimp(mars.bal)
 print(varimpt)
