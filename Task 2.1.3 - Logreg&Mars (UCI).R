@@ -46,7 +46,7 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
 
-df[ ,c( 'RECENCY',
+df[ ,c('RECENCY',
         'FREQUENCY',
         'MONEY',
         'RECENCY_normalised',
@@ -54,10 +54,7 @@ df[ ,c( 'RECENCY',
         'MONEY_normalised',
         'Description',
         'InvoiceDate',
-        'CustomerID',
-        'InvoiceNo',
-        'StockCode',
-        'OrderDetails'
+        'CustomerID'
 ):=NULL]
 
 #####################################################################################################
@@ -113,8 +110,10 @@ plot(df$clv,col=(ckm$cluster+1),main = "K-Means Clustering Results",xlab = "",yl
 abline(h = ckm$centers, col = 1:2, pch = 8,cex = 2)
 ckm$withinss ## [1] 2071400.31  759478.47   50486.51
 ckm$tot.withinss ## [1] 2881365
-# Total within-cluster sum of squares is the same
-# Individual within-cluster sum of squares differs
+
+table.cluster <- data.frame("Model"=c("K-Means", "Ckmeans.1d.dp"),"Total Within-Cluster Sum of Squares" = c(km$tot.withinss,ckm$tot.withinss))
+
+# Total within-cluster sum of squares is lower for Ckmeans.1d.dp
 ## Parse the cluster coefficients back to original dataframe
 df$cluster = factor(ckm$cluster)
 summary(df$cluster)
@@ -132,11 +131,9 @@ summary(test)
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
-<<<<<<< Updated upstream
+
 logreg <- multinom(cluster ~ ., data=train)
-=======
-logreg <- multinom(cluster~ InvoiceDate+Country+UnitPrice+ProductVariations, data=train)
->>>>>>> Stashed changes
+
 summary(logreg)
 
 ## Odds Ratio
@@ -146,6 +143,8 @@ OR.logreg
 # 95% Confidence interval
 OR.logreg.CI <- exp(confint(logreg))
 OR.logreg.CI
+
+confint <- as.data.frame(OR.logreg.CI)
 
 # p-value
 z <- summary(logreg)$coefficients/summary(logreg)$standard.errors
@@ -176,13 +175,13 @@ logreg.step$coefnames
 predict.cluster.train <- predict(logreg.step)
 predict.cluster.train
 
-<<<<<<< Updated upstream
+
 logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
                              predict.cluster.train, deparse.level = 2)
 logreg.cm.train
-=======
+
 logreg.cm.train <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = predict.cluster.train, deparse.level = 2)
->>>>>>> Stashed changes
+
 
 accuracy.logreg.train <- mean(predict.cluster.train == train$cluster)
 accuracy.logreg.train #0.9391751
@@ -191,14 +190,12 @@ accuracy.logreg.train #0.9391751
 predict.cluster.test <- predict(logreg.step, newdata=test)
 predict.cluster.test
 
-<<<<<<< Updated upstream
+
 logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
                             predict.cluster.test, deparse.level = 2)
 logreg.cm.test
-=======
+
 logreg.cm.test <- table(`Testset Actuals` = test$cluster, `Model Prediction` = predict.cluster.test, deparse.level = 2)
-View(logreg.cm.test)
->>>>>>> Stashed changes
 
 accuracy.logreg.test <- mean(predict.cluster.test == test$cluster)
 accuracy.logreg.test #0.9379618
@@ -211,11 +208,10 @@ c(accuracy.logreg.train,accuracy.logreg.test)
 ## MARS: Train on Original Trainset
 set.seed(2014)
 #UnitPrice+InvoiceDate+Country+ProductVariations
-mars <- earth(cluster~.,degree=2,data=train)
+mars <- earth(cluster~.,degree=2,glm = list(family=binomial),trace =1, data=train)
 summary(mars)
 
 str(mars)
-View(mars$coefficients)
 
 mars.predict.train <- predict(mars)
 mars.predict.train
@@ -348,6 +344,7 @@ beep()
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 
+
 #####################################################################################################
 #######                                     BALANCING DATA                                    #######
 
@@ -364,50 +361,6 @@ middle.chosen <- middle[chosen2]
 ## Combine two data tables by appending the rows 
 train.bal <- rbind(majority.chosen,middle.chosen, minority) 
 summary(train.bal) 
-
-#####################################################################################################
-#################################    RANDOM FOREST, BALANCED DATA   #################################
-
-set.seed(2014)
-memory.limit(100000)
-rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
-
-## Random Forest: Get Model Stats ##
-rf.bal
-# error rate = 8.12%
-
-par(mfrow=c(1,1))
-plot(rf.bal)
-# Error needed more trees to stabilise, but still stabilised at about 200 trees.
-
-## Random Forest: Predict on Trainset ##
-rf.bal.pred.train <- predict(rf.bal)
-
-rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
-                                  rf.bal.pred.train, deparse.level = 2)
-rf.bal.train.confMat
-# (680+15+591)/15831 = 8.12% or 91.9% accuracy
-
-## Random Forest: Predict on Testset ##
-rf.bal.pred.test <- predict(rf.bal, newdata=test)
-rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
-                                 rf.bal.pred.test, deparse.level = 2)
-rf.bal.test.confMat
-#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
-
-var.impt.RF.bal <- importance(rf.bal)
-
-varImpPlot(rf.bal, type = 1)
-# Country became even more important
-
-set.seed(2014)
-mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
-mat.bal
-# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
-# accurate measure. thus, we will stick to it.
-
-library(beepr)
-beep()
 
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
@@ -460,7 +413,7 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~ UnitPrice++InvoiceDate+Country+ProductVariations,degree=1,data=train.bal)
+mars.bal <- earth(cluster~.,degree=1,glm=list(family=binomial),data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
@@ -512,3 +465,46 @@ print(varimpt)
 ## Degree 2 has higher accuracy for train, lower accuracy for test
 ## Degree 1 has higher accuracy for test, lower accuracy for train
 
+#####################################################################################################
+#################################    RANDOM FOREST, BALANCED DATA   #################################
+
+set.seed(2014)
+memory.limit(100000)
+rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf.bal
+# error rate = 8.12%
+
+par(mfrow=c(1,1))
+plot(rf.bal)
+# Error needed more trees to stabilise, but still stabilised at about 200 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.bal.pred.train <- predict(rf.bal)
+
+rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
+          rf.bal.pred.train, deparse.level = 2)
+rf.bal.train.confMat
+# (680+15+591)/15831 = 8.12% or 91.9% accuracy
+
+## Random Forest: Predict on Testset ##
+rf.bal.pred.test <- predict(rf.bal, newdata=test)
+rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+          rf.bal.pred.test, deparse.level = 2)
+rf.bal.test.confMat
+#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
+
+var.impt.RF.bal <- importance(rf.bal)
+
+varImpPlot(rf.bal, type = 1)
+# Country became even more important
+
+set.seed(2014)
+mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
+mat.bal
+# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
+# accurate measure. thus, we will stick to it.
+
+library(beepr)
+beep()
