@@ -353,6 +353,10 @@ summary(review_lr)$adj.r.squared
 Data <- c('orders_all_1', 'orders_all_2')
 Accuracy.LR <- round(calculateAccuracy2(review_lr, test_orders_all_1), 3)
 
+#diagnostic plots to check if assumptions are met 
+par(mfrow = c(2, 2))
+plot(review_lr)
+
 #training linear regression model on orders_all_2
 review_lr2 <- lm(review_score ~ ., data = train_orders_all_2)
 summary(review_lr2)
@@ -361,6 +365,11 @@ summary(review_lr2)$r.squared
 summary(review_lr2)$adj.r.squared
 Accuracy.LR <- c(Accuracy.LR, round(calculateAccuracy2(review_lr2, test_orders_all_2), 3))
 
+#diagnostic plots to check if assumptions are met 
+par(mfrow = c(2, 2))
+plot(review_lr2)
+
+#table of accuracy for both models
 Accuracy_table <- data.frame(Data, Accuracy.LR)
 
 #------------------------------MARS Implementation------------------------------#
