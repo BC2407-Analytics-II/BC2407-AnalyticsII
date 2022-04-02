@@ -262,6 +262,7 @@ print(varimpt)
 
 ## Random Forest: Train on Original Trainset ##
 #stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
+set.seed(2014)
 memory.limit(100000)
 rf = randomForest(cluster ~ . , data = train, importance = TRUE)
 
@@ -274,17 +275,19 @@ plot(rf)
 # Confirms error stabilised before 500 trees.
 
 ## Random Forest: Predict on Trainset ##
-rf.pred.train = predict(rf)
+rf.pred.train <- predict(rf)
 
-table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+rf.train.confMat <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
           rf.pred.train, deparse.level = 2)
+rf.train.confMat
 # (7657+1219+29+6)/275989 = 3.23% or 96.8% accuracy
 
 ## Random Forest: Predict on Testset ##
-rf.pred.test = predict(rf, newdata=test)
-table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+rf.pred.test <- predict(rf, newdata=test)
+rf.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
           rf.pred.test, deparse.level = 2)
-#(3346+487+16+5)/118282 = 3.26% or 96.7% accuracy
+rf.test.confMat
+#(3345+490+16+5)/118282 = 3.26% or 96.7% accuracy
 
 var.impt.RF <- importance(rf)
 
@@ -314,7 +317,8 @@ calculateRF <- function(data, eqn, rows, cols) {
                                      ntree = Bval, #B
                                      mtry = RSFval, #RSF size
             )$err.rate #get the error rate
-            result = tempModel[nrow(tempModel),1] #select the last row, first value. this is the OOB error
+            result = tempModel[nrow(tempModel),1] #select the last row, first value. 
+            # this is the OOB error
             mat[row, col] = result #assign to matrix
             cat('running RF with B =', Bval, 'and RSF =', RSFval, 'gave us error =', result, '\n')
         }
@@ -324,8 +328,13 @@ calculateRF <- function(data, eqn, rows, cols) {
 #################### END FUNCTION DEFINITION ####################
 #################################################################
 
+set.seed(2014)
 mat = calculateRF(test, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test)-1)), ncol(test)-1))
 mat
+
+library(beepr)
+beep()
+
 # in this case, increasing B and RSF each will result in a decrease in error rate.
 # however, improvement from B = 100 to 500 decreases error rate only by a marginal amount.
 # choose B = 100
@@ -460,33 +469,43 @@ print(varimpt)
 #####################################################################################################
 #################################    RANDOM FOREST, BALANCED DATA   #################################
 
+set.seed(2014)
 memory.limit(100000)
-rf.bal = randomForest(cluster ~ . , data = train, B = 100, importance = TRUE)
+rf.bal = randomForest(cluster ~ . , data = train.bal, importance = TRUE)
 
 ## Random Forest: Get Model Stats ##
 rf.bal
-# error rate = %
+# error rate = 8.12%
 
 par(mfrow=c(1,1))
 plot(rf.bal)
-# Confirms error stabilised before 100 trees.
+# Error needed more trees to stabilise, but still stabilised at about 200 trees.
 
 ## Random Forest: Predict on Trainset ##
-rf.bal.pred.train = predict(rf.bal)
+rf.bal.pred.train <- predict(rf.bal)
 
-table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+rf.bal.train.confMat <- table(`Trainset Actuals` = train.bal$cluster, `Model Prediction` = 
           rf.bal.pred.train, deparse.level = 2)
-# ()/275989 = % or % accuracy
+rf.bal.train.confMat
+# (680+15+591)/15831 = 8.12% or 91.9% accuracy
 
 ## Random Forest: Predict on Testset ##
-rf.bal.pred.test = predict(rf.bal, newdata=test)
-table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+rf.bal.pred.test <- predict(rf.bal, newdata=test)
+rf.bal.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
           rf.bal.pred.test, deparse.level = 2)
-#()/118282 = % or % accuracy
+rf.bal.test.confMat
+#(13961+496+780)/118282 = 12.9% or 87.1% accuracy
 
 var.impt.RF.bal <- importance(rf.bal)
 
 varImpPlot(rf.bal, type = 1)
-#  is the most important by a long shot
+# Country became even more important
 
+set.seed(2014)
+mat.bal <- calculateRF(train.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train.bal)-1)), ncol(train.bal)-1))
+mat.bal
+# unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
+# accurate measure. thus, we will stick to it.
 
+library(beepr)
+beep()
