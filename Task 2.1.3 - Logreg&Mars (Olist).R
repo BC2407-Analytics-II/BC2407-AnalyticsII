@@ -223,9 +223,7 @@ beep()
 
 ## Logistic Regression: Train on Original Trainset
 ## https://stackoverflow.com/questions/36303404/too-many-weights-in-multinomial-logistic-regression-and-the-code-is-running-for
-logreg1 <- multinom(cluster~customer_state+review_score+payment_sequential+
-                        payment_type+payment_installments+payment_value+price+freight_value
-                        +seller_state+product_category_name_english, data=train, family="multinomial",MaxNWts=20000)
+logreg1 <- multinom(cluster~., data=train, family="multinomial",MaxNWts=20000)
 summary(logreg1)
 
 str(df1)
@@ -272,9 +270,7 @@ accuracy.logreg1.test
 
 ## MARS: Train on Original Trainset
 set.seed(2014)
-mars1 <- earth(cluster~customer_state+review_score+payment_sequential+
-                   payment_type+payment_installments+payment_value+price+freight_value+
-                   seller_state+product_category_name_english,degree=2,data=train)
+mars1 <- earth(cluster~.,degree=2,glm=list(family=binomial),data=train)
 summary(mars1)
 mars1.predict.train <- predict(mars1)
 mars1.predict.train
@@ -397,9 +393,7 @@ beep()
 
 ## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
-logreg.bal <- multinom(cluster~ccustomer_state+review_score+payment_sequential+
-                           payment_type+payment_installments+payment_value+price+freight_value+
-                           seller_state+product_category_name_english, data=train.bal,MaxNWts=20000)
+logreg.bal <- multinom(cluster~., data=train.bal,MaxNWts=20000)
 summary(logreg.bal)
 
 ## Odds Ratio
@@ -445,9 +439,7 @@ accuracy.logreg.test.bal ## [1] 0.6791143
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~customer_state+review_score+payment_sequential+
-                      payment_type+payment_installments+payment_value+price+freight_value+
-                      seller_state+product_category_name_english,degree=1,data=train.bal)
+mars.bal <- earth(cluster~.,degree=1,glm=list(family=binomial),data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
