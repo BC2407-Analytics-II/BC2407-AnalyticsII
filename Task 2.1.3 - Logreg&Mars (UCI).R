@@ -129,6 +129,92 @@ summary(train)
 summary(test)
 
 #####################################################################################################
+#################################    RANDOM FOREST, ORIGINAL DATA   #################################
+
+## Random Forest: Train on Original Trainset ##
+#stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
+set.seed(2014)
+memory.limit(100000)
+rf = randomForest(cluster ~ . , data = train, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf
+# error rate = 3.23%
+
+par(mfrow=c(1,1))
+plot(rf)
+# Confirms error stabilised before 500 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.pred.train <- predict(rf)
+
+rf.train.confMat <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
+                              rf.pred.train, deparse.level = 2)
+rf.train.confMat
+# (7657+1219+29+6)/275989 = 3.23% or 96.8% accuracy
+
+## Random Forest: Predict on Testset ##
+rf.pred.test <- predict(rf, newdata=test)
+rf.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
+                             rf.pred.test, deparse.level = 2)
+rf.test.confMat
+#(3345+490+16+5)/118282 = 3.26% or 96.7% accuracy
+
+var.impt.RF <- importance(rf)
+
+varImpPlot(rf, type = 1)
+# Country is the most important by a long shot
+
+## Random Forest: Optimise B and RSF ##
+#################################################################
+##################### FUNCTION: calculateRF #####################
+#################################################################
+### This function takes in a dataframe, the random forest equation, a list of B values, and a list
+### of RSF values to test
+### and returns a matrix summarising random forest performance for each combination of B and RSF
+calculateRF <- function(data, eqn, rows, cols) {
+    #generates matrix for the specified rows and cols
+    mat = matrix(rep(0,length(cols)*length(rows)), nrow = length(cols), dimnames = list(rows, cols))
+    #iterate through the values
+    for (row in 1:nrow(mat)) {
+        for (col in 1:ncol(mat)) {
+            set.seed(1) #Bootstrap + RSF
+            #run random forest with the specified B / ntree / row and RSF / mtry / col
+            #get the value in the row and column of the matrix and convert from string to int.
+            #these are the B and RSF values that we want
+            Bval = strtoi(rownames(mat)[row], base=0L)
+            RSFval = strtoi(colnames(mat)[col], base=0L)
+            tempModel = randomForest(eqn, data, importance = T,
+                                     ntree = Bval, #B
+                                     mtry = RSFval, #RSF size
+            )$err.rate #get the error rate
+            result = tempModel[nrow(tempModel),1] #select the last row, first value. 
+            # this is the OOB error
+            mat[row, col] = result #assign to matrix
+            cat('running RF with B =', Bval, 'and RSF =', RSFval, 'gave us error =', result, '\n')
+        }
+    }
+    return(mat)
+}
+#################### END FUNCTION DEFINITION ####################
+#################################################################
+
+set.seed(2014)
+mat = calculateRF(test, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test)-1)), ncol(test)-1))
+mat
+
+library(beepr)
+beep()
+
+# in this case, increasing B and RSF each will result in a decrease in error rate.
+# however, improvement from B = 100 to 500 decreases error rate only by a marginal amount.
+# choose B = 100
+# RSF = 11 yields the lowest error rate. however, given the observed dominance of the country
+# variable, this is a stable model and hence bagging will become not useful due to the dominant X.
+# different bootstrap samples will produce the same or almost the same model.
+# therefore, we will just use RSF = sqrt(variables).
+
+#####################################################################################################
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
@@ -259,92 +345,6 @@ accuracy.mars.test
 
 varimpt <- evimp(mars)
 print(varimpt)
-
-#####################################################################################################
-#################################    RANDOM FOREST, ORIGINAL DATA   #################################
-
-## Random Forest: Train on Original Trainset ##
-#stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
-set.seed(2014)
-memory.limit(100000)
-rf = randomForest(cluster ~ . , data = train, importance = TRUE)
-
-## Random Forest: Get Model Stats ##
-rf
-# error rate = 3.23%
-
-par(mfrow=c(1,1))
-plot(rf)
-# Confirms error stabilised before 500 trees.
-
-## Random Forest: Predict on Trainset ##
-rf.pred.train <- predict(rf)
-
-rf.train.confMat <- table(`Trainset Actuals` = train$cluster, `Model Prediction` = 
-          rf.pred.train, deparse.level = 2)
-rf.train.confMat
-# (7657+1219+29+6)/275989 = 3.23% or 96.8% accuracy
-
-## Random Forest: Predict on Testset ##
-rf.pred.test <- predict(rf, newdata=test)
-rf.test.confMat <- table(`Testset Actuals` = test$cluster, `Model Prediction` = 
-          rf.pred.test, deparse.level = 2)
-rf.test.confMat
-#(3345+490+16+5)/118282 = 3.26% or 96.7% accuracy
-
-var.impt.RF <- importance(rf)
-
-varImpPlot(rf, type = 1)
-# Country is the most important by a long shot
-
-## Random Forest: Optimise B and RSF ##
-#################################################################
-##################### FUNCTION: calculateRF #####################
-#################################################################
-### This function takes in a dataframe, the random forest equation, a list of B values, and a list
-### of RSF values to test
-### and returns a matrix summarising random forest performance for each combination of B and RSF
-calculateRF <- function(data, eqn, rows, cols) {
-    #generates matrix for the specified rows and cols
-    mat = matrix(rep(0,length(cols)*length(rows)), nrow = length(cols), dimnames = list(rows, cols))
-    #iterate through the values
-    for (row in 1:nrow(mat)) {
-        for (col in 1:ncol(mat)) {
-            set.seed(1) #Bootstrap + RSF
-            #run random forest with the specified B / ntree / row and RSF / mtry / col
-            #get the value in the row and column of the matrix and convert from string to int.
-            #these are the B and RSF values that we want
-            Bval = strtoi(rownames(mat)[row], base=0L)
-            RSFval = strtoi(colnames(mat)[col], base=0L)
-            tempModel = randomForest(eqn, data, importance = T,
-                                     ntree = Bval, #B
-                                     mtry = RSFval, #RSF size
-            )$err.rate #get the error rate
-            result = tempModel[nrow(tempModel),1] #select the last row, first value. 
-            # this is the OOB error
-            mat[row, col] = result #assign to matrix
-            cat('running RF with B =', Bval, 'and RSF =', RSFval, 'gave us error =', result, '\n')
-        }
-    }
-    return(mat)
-}
-#################### END FUNCTION DEFINITION ####################
-#################################################################
-
-set.seed(2014)
-mat = calculateRF(test, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test)-1)), ncol(test)-1))
-mat
-
-library(beepr)
-beep()
-
-# in this case, increasing B and RSF each will result in a decrease in error rate.
-# however, improvement from B = 100 to 500 decreases error rate only by a marginal amount.
-# choose B = 100
-# RSF = 11 yields the lowest error rate. however, given the observed dominance of the country
-# variable, this is a stable model and hence bagging will become not useful due to the dominant X.
-# different bootstrap samples will produce the same or almost the same model.
-# therefore, we will just use RSF = sqrt(variables).
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 

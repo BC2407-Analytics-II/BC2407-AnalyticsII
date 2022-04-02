@@ -152,6 +152,73 @@ summary(train)
 summary(test)
 
 #####################################################################################################
+#################################    RANDOM FOREST, ORIGINAL DATA   #################################
+
+## Random Forest: Train on Original Trainset ##
+#stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
+set.seed(2014)
+memory.limit(100000)
+rf = randomForest(cluster ~ . , data = train, importance = TRUE)
+
+## Random Forest: Cannot run on more than 53 categories ##
+df1.copy <- df1
+str(df1.copy)
+#strip product_category_name_english to its base form
+levels(df1.copy$product_category_name_english)
+df1.copy$product_category_name_english <- sub("_", " ", df1.copy$product_category_name_english)
+df1.copy$product_category_name_english <- word(df1.copy$product_category_name_english, 1)
+df1.copy$product_category_name_english <- sub("fashio", "fashion", df1.copy$product_category_name_english)
+df1.copy$product_category_name_english = as.factor(df1.copy$product_category_name_english)
+str(df1.copy)
+#remove seller_city, customer_city for now
+df1.copy[ ,c(
+    'payment_value'
+):=NULL]
+
+## Train-test split ##
+set.seed(3)
+sample <- sample.int(n = nrow(df1.copy), size = floor(0.7*nrow(df1.copy)), replace = F)
+train2 <- df1.copy[sample, ]
+test2  <- df1.copy[-sample, ]
+
+## Random Forest: Train on Original Trainset ##
+set.seed(2014)
+memory.limit(100000)
+rf = randomForest(cluster ~ . , data = train2, importance = TRUE)
+
+## Random Forest: Get Model Stats ##
+rf
+# error rate = 9.1%
+
+par(mfrow=c(1,1))
+plot(rf)
+# Confirms error stabilised before 500 trees.
+
+## Random Forest: Predict on Trainset ##
+rf.pred.train <- predict(rf)
+
+rf.train.confMat <- table(`Trainset Actuals` = train2$cluster, `Model Prediction` = 
+                              rf.pred.train, deparse.level = 2)
+rf.train.confMat
+#(408+8+6228+216+7)/75474 = 9.1%
+
+## Random Forest: Predict on Testset ##
+rf.pred.test <- predict(rf, newdata=test2)
+rf.test.confMat <- table(`Testset Actuals` = test2$cluster, `Model Prediction` = 
+                             rf.pred.test, deparse.level = 2)
+rf.test.confMat
+#(171+2+2551+5+92+1)/32346 = 8.7% or 91.3% accuracy
+
+var.impt.RF <- importance(rf)
+
+varImpPlot(rf, type = 1)
+#product_category_name_english is most important, followed by review_score and payment_installments
+#https://stats.stackexchange.com/questions/457953/r-importance-of-categorical-variables-in-random-forests
+
+library(beepr)
+beep()
+
+#####################################################################################################
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
@@ -251,73 +318,6 @@ accuracy.mars1.test
 
 varimpt1 <- evimp(mars1)
 print(varimpt1)
-
-#####################################################################################################
-#################################    RANDOM FOREST, ORIGINAL DATA   #################################
-
-## Random Forest: Train on Original Trainset ##
-#stackoverflow.com/questions/49161802/random-forest-with-r-cannot-allocate-vector-of-size-7-5-gb
-set.seed(2014)
-memory.limit(100000)
-rf = randomForest(cluster ~ . , data = train, importance = TRUE)
-
-## Random Forest: Cannot run on more than 53 categories ##
-df1.copy <- df1
-str(df1.copy)
-#strip product_category_name_english to its base form
-levels(df1.copy$product_category_name_english)
-df1.copy$product_category_name_english <- sub("_", " ", df1.copy$product_category_name_english)
-df1.copy$product_category_name_english <- word(df1.copy$product_category_name_english, 1)
-df1.copy$product_category_name_english <- sub("fashio", "fashion", df1.copy$product_category_name_english)
-df1.copy$product_category_name_english = as.factor(df1.copy$product_category_name_english)
-str(df1.copy)
-#remove seller_city, customer_city for now
-df1.copy[ ,c(
-        'payment_value'
-):=NULL]
-
-## Train-test split ##
-set.seed(3)
-sample <- sample.int(n = nrow(df1.copy), size = floor(0.7*nrow(df1.copy)), replace = F)
-train2 <- df1.copy[sample, ]
-test2  <- df1.copy[-sample, ]
-
-## Random Forest: Train on Original Trainset ##
-set.seed(2014)
-memory.limit(100000)
-rf = randomForest(cluster ~ . , data = train2, importance = TRUE)
-
-## Random Forest: Get Model Stats ##
-rf
-# error rate = 9.1%
-
-par(mfrow=c(1,1))
-plot(rf)
-# Confirms error stabilised before 500 trees.
-
-## Random Forest: Predict on Trainset ##
-rf.pred.train <- predict(rf)
-
-rf.train.confMat <- table(`Trainset Actuals` = train2$cluster, `Model Prediction` = 
-                              rf.pred.train, deparse.level = 2)
-rf.train.confMat
-#(408+8+6228+216+7)/75474 = 9.1%
-
-## Random Forest: Predict on Testset ##
-rf.pred.test <- predict(rf, newdata=test2)
-rf.test.confMat <- table(`Testset Actuals` = test2$cluster, `Model Prediction` = 
-                             rf.pred.test, deparse.level = 2)
-rf.test.confMat
-#(171+2+2551+5+92+1)/32346 = 8.7% or 91.3% accuracy
-
-var.impt.RF <- importance(rf)
-
-varImpPlot(rf, type = 1)
-#product_category_name_english is most important, followed by review_score and payment_installments
-#https://stats.stackexchange.com/questions/457953/r-importance-of-categorical-variables-in-random-forests
-
-library(beepr)
-beep()
 
 ## Data is skewed towards cluster 1, thus attempt to create balanced dataset to train the model
 
