@@ -434,3 +434,6 @@ Accuracy.MARS <- c(Accuracy.MARS, round(calculateAccuracy2(reviews_mars_2, test_
 
 #table of accuracy for MARS models
 Accuracy_MARS_table <- data.frame(Dataset, Degree, Accuracy.MARS)
+
+#getting variable importance from the most accuracte model
+evimp(reviews_mars_1)
