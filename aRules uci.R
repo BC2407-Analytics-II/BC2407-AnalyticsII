@@ -26,9 +26,8 @@ inspect(frequent.cats)
 itemFrequencyPlot(transaction, topN=10, type="relative", main="Top 10 items (stock code)")
 
 # get rules (min. count = 2)
-aRules <- apriori (transaction, parameter =  list(minlen = 2, supp=0.015, conf = 0.1, target = "rules"))
-inspect(aRules)
-aRules.df <- as(aRules, "data.frame")
-subRules<-aRules[quality(aRules)$lift > 1] # get those with lift > 1 
-subRules.df <- as(subRules, "data.frame")
-write.csv(subRules.df,file="subRules UCI.csv",row.names = F)
+cat_rules <- apriori (transaction, parameter =  list(minlen = 2, supp=0.01, conf = 0.01, target = "rules"))
+inspect(cat_rules)
+cat_rules.df <- as(cat_rules, "data.frame")
+cat_subRules<-cat_rules[quality(cat_rules)$lift > 1] # get those with lift > 1 
+cat_subRules.df <- as(cat_subRules, "data.frame")

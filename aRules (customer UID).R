@@ -2,6 +2,7 @@ setwd(paste(getwd(),'/Data',sep=""))
 library(arules)
 library(tidyr)
 library(dplyr)
+library(mondate)
 
 data <- read.csv('Orders_merged.csv')
 
@@ -103,4 +104,3 @@ product_rules.df <- as(product_rules, "data.frame")
 product_subRules<-product_rules[quality(product_rules)$lift > 1] # get those with lift > 1 
 product_subRules.df <- as(product_subRules, "data.frame")
 
-write.csv(product_subRules.df,file="subRules olist.csv",row.names = F)
