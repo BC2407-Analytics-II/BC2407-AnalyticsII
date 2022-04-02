@@ -14,12 +14,11 @@ library(randomForest)       # for random forest
 library(data.table)         # for data manipulation 1
 library(dplyr)              # for data manipulation 2
 library(tidyverse)          # for data manipulation 3
-library(readxl)             # 
 library(earth)              # for MARS
-library(factoextra)         #
+library(factoextra)         # for Kmeans clustering
 library(cluster)            # for Kmeans clustering
 library(Ckmeans.1d.dp)      # for Kmeans clustering
-library(nnet)               # for neural networks?
+library(nnet)               # for Multinom Logreg
 library(stringr)            # to split strings
 
 #####################################################################################################
@@ -62,14 +61,15 @@ df1[ ,c('product_id',
         'product_category_name',
         'order_status',
         'customer_city',
-        'seller_city'
+        'seller_city',
+        'payment_value'
 ):=NULL]
 sum(is.na(df1))
 df1[!complete.cases(df1), ]
 df1 <- na.omit(df1)
 
 ## Convert to categorical
-cat <- c("order_status","customer_state","payment_type",
+cat <- c("customer_state","payment_type",
          "seller_state","product_category_name_english")
 df1 <- df1 %>%
   mutate_at(cat, list(~factor(.)))
@@ -170,10 +170,6 @@ df1.copy$product_category_name_english <- word(df1.copy$product_category_name_en
 df1.copy$product_category_name_english <- sub("fashio", "fashion", df1.copy$product_category_name_english)
 df1.copy$product_category_name_english = as.factor(df1.copy$product_category_name_english)
 str(df1.copy)
-#remove seller_city, customer_city for now
-df1.copy[ ,c(
-    'payment_value'
-):=NULL]
 
 ## Train-test split ##
 set.seed(3)
@@ -253,15 +249,12 @@ set.seed(2014)
 mat = calculateRF(test2, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test2)-1)), ncol(test2)-1))
 mat
 
-library(beepr)
-beep()
-
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, ORIGINAL DATA   ##############################
 
 ## Logistic Regression: Train on Original Trainset
 ## https://stackoverflow.com/questions/36303404/too-many-weights-in-multinomial-logistic-regression-and-the-code-is-running-for
-logreg1 <- multinom(cluster~., data=train, family="multinomial",MaxNWts=20000)
+logreg1 <- multinom(cluster~., data=train, family="multinomial")
 summary(logreg1)
 
 str(df1)
@@ -279,7 +272,8 @@ pvalue <- (1 - pnorm(abs(z), 0, 1))*2  # 2-tailed test p-values
 pvalue
 
 logreg1.step <- step(logreg1)
-logreg1.step
+logreg1$coefnames
+logreg1.step$coefnames
 
 ## Logistic Regression: Predict on Original Trainset
 predict.cluster.train1 <- predict(logreg1.step)
@@ -302,6 +296,8 @@ logreg1.cm.test
 
 accuracy.logreg1.test <- mean(predict.cluster.test1 == test$cluster)
 accuracy.logreg1.test
+
+c(accuracy.logreg1.train,accuracy.logreg1.test)
 
 #####################################################################################################
 ######################################    MARS, ORIGINAL DATA   #####################################
@@ -332,7 +328,7 @@ varimpt1 <- evimp(mars1)
 print(varimpt1)
 
 ## MARS: Predict on Testset
-mars1.predict.test <- predict(mars, newdata=test)
+mars1.predict.test <- predict(mars1, newdata=test)
 mars1.predict.test
 mars1.predict.test <- as.data.frame(mars1.predict.test)
 mars1.predict.test$`predicted cluster` <- ifelse(
@@ -350,6 +346,8 @@ mars1.cm.test
 accuracy.mars1.test<- mean(mars1.predict.test$`predicted cluster` == test$cluster)
 accuracy.mars1.test
 
+c(accuracy.mars1.train,accuracy.mars1.test)
+
 varimpt1 <- evimp(mars1)
 print(varimpt1)
 
@@ -359,6 +357,7 @@ print(varimpt1)
 #######                                     BALANCING DATA                                    #######
 
 ## Random sample from majority class Default = No and combine with Default = Yes to form new trainset
+set.seed(2014)
 majority <- train[cluster == 1]
 middle <- train[cluster == 2]
 minority <- train[cluster == 3] 
@@ -374,7 +373,7 @@ summary(train.bal)
 
 #####################################################################################################
 #######                     BALANCING DATA for Reduced Product Categories                     #######
-
+set.seed(2014)
 majority2 <- train2[cluster == 1]
 middle2 <- train2[cluster == 2]
 minority2 <- train2[cluster == 3] 
@@ -427,15 +426,12 @@ set.seed(2014)
 mat.bal <- calculateRF(train2.bal, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(train2.bal)-1)), ncol(train.bal)-1))
 mat.bal
 
-library(beepr)
-beep()
-
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
 
 ## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
-logreg.bal <- multinom(cluster~., data=train.bal,MaxNWts=20000)
+logreg.bal <- multinom(cluster~., data=train.bal)
 summary(logreg.bal)
 
 ## Odds Ratio
@@ -463,8 +459,8 @@ logreg.cm.train.bal <- table(`Trainset Actuals` = train.bal$cluster, `Model Pred
 logreg.cm.train.bal
 
 accuracy.logreg.train.bal <- mean(predict.cluster.train.bal == train.bal$cluster)
-accuracy.logreg.train.bal ## [1] 0.3929632
-
+accuracy.logreg.train.bal ## 0.75
+str(logreg.step.bal)
 ## Logistic Regression: Predict on Balanced Testset
 predict.cluster.test.bal <- predict(logreg.step.bal, newdata=test)
 predict.cluster.test.bal
@@ -476,12 +472,14 @@ logreg.cm.test.bal
 accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
 accuracy.logreg.test.bal ## [1] 0.6791143
 
+c(accuracy.logreg.train.bal,accuracy.logreg.test.bal)
+
 #####################################################################################################
 ######################################    MARS, BALANCED DATA   #####################################
 
 ## MARS: Train on Balanced Trainset
 set.seed(2014)
-mars.bal <- earth(cluster~.,degree=1,glm=list(family=binomial),data=train.bal)
+mars.bal <- earth(cluster~.,degree=2,glm=list(family=binomial),data=train.bal)
 summary(mars.bal)
 mars.predict.train.bal <- predict(mars.bal)
 mars.predict.train.bal
@@ -528,6 +526,8 @@ mars.cm.test.bal
 
 accuracy.mars.test.bal <- mean(mars.predict.test.bal$`predicted cluster` == test$cluster)
 accuracy.mars.test.bal 
+
+c(accuracy.mars.train.bal,accuracy.mars.test.bal)
 
 varimpt <- evimp(mars.bal)
 print(varimpt)

@@ -14,12 +14,11 @@ library(randomForest)       # for random forest
 library(data.table)         # for data manipulation 1
 library(dplyr)              # for data manipulation 2
 library(tidyverse)          # for data manipulation 3
-library(readxl)             # 
 library(earth)              # for MARS
-library(factoextra)         #
+library(factoextra)         # for kmeans clustering
 library(cluster)            # for Kmeans clustering
 library(Ckmeans.1d.dp)      # for Kmeans clustering
-library(nnet)               # for neural networks?
+library(nnet)               # for multinomial logistic regression
 
 #####################################################################################################
 #######                                   DATA PREPROCESSING                                  #######
@@ -54,7 +53,10 @@ df[ ,c('RECENCY',
         'MONEY_normalised',
         'Description',
         'InvoiceDate',
-        'CustomerID'
+        'CustomerID',
+       'OrderDetails',
+       'InvoiceNo',
+       'StockCode'
 ):=NULL]
 
 #####################################################################################################
@@ -202,8 +204,6 @@ set.seed(2014)
 mat = calculateRF(test, cluster ~ ., c(25,100,500), c(1, floor(sqrt(ncol(test)-1)), ncol(test)-1))
 mat
 
-library(beepr)
-beep()
 
 # in this case, increasing B and RSF each will result in a decrease in error rate.
 # however, improvement from B = 100 to 500 decreases error rate only by a marginal amount.
@@ -339,6 +339,8 @@ mars.cm.test
 accuracy.mars.test<- mean(mars.predict.test$`predicted cluster` == test$cluster)
 accuracy.mars.test
 
+c(accuracy.mars.train,accuracy.mars.test)
+
 varimpt <- evimp(mars)
 print(varimpt)
 
@@ -403,15 +405,13 @@ mat.bal
 # unlike in the original dataset, the default of B=500 and RSF=sqrt(variable) provides the most
 # accurate measure. thus, we will stick to it.
 
-library(beepr)
-beep()
 
 #####################################################################################################
 ##############################    LOGISTIC REGRESSION, BALANCED DATA   ##############################
 
 ## Logistic Regression: Train on Balanced Trainset
 set.seed(2014)
-logreg.bal <- multinom(cluster~ UnitPrice+InvoiceDate+Country+ProductVariations, data=train.bal)
+logreg.bal <- multinom(cluster~ ., data=train.bal)
 summary(logreg.bal)
 
 ## Odds Ratio
@@ -451,6 +451,8 @@ logreg.cm.test.bal
 
 accuracy.logreg.test.bal <- mean(predict.cluster.test.bal == test$cluster)
 accuracy.logreg.test.bal ## [1] 0.6791143
+
+c(accuracy.logreg.train.bal,accuracy.logreg.test.bal)
 
 #####################################################################################################
 ######################################    MARS, BALANCED DATA   #####################################
@@ -508,4 +510,3 @@ print(varimpt)
 
 ## Degree 2 has higher accuracy for train, lower accuracy for test
 ## Degree 1 has higher accuracy for test, lower accuracy for train
-
