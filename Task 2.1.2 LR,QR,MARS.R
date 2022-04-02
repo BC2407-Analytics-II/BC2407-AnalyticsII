@@ -310,6 +310,7 @@ for( i in 1:length(taus)){
   }
 }
 
+###################################################
 orders_all_2.3 = orders_all_2
 orders_all_2.3$delta_time_percentage = -orders_all_2.3$delta_time/orders_all_2.3$est_del_time
 orders_all_2.3$del_time = NULL
