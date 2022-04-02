@@ -61,19 +61,6 @@ generateTrainTest(orders_all_1, 0.7)
 train_orders_all_1 <- train #creating a copy of trainset for orders_all_1 
 test_orders_all_1 <- test #creating a copy of testset for orders_all_1 
 
-
-calculateAccuracy2 = function(predictive_model, test){
-  predictions=predict(predictive_model, newdata = test)
-  summary(predictions)
-  predictions[predictions<=1.4]=1 
-  predictions[(predictions>1.4)&(predictions<=2.4)]=2
-  predictions[(predictions>2.4)&(predictions<=3.4)]=3
-  predictions[(predictions>3.4)&(predictions<=4.4)]=4
-  predictions[predictions>4.4]=5
-  return(mean(predictions == test$review_score))
-}
-
-
 #####################################################################################################
 ####################################    QUANTILE REGRESSION, V1   ###################################
 
