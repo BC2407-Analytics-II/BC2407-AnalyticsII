@@ -46,7 +46,7 @@ df$InvoiceDate_DayPeriod = cut(df$InvoiceDate_HourofDay, breaks=c(-1,6,12,18,24)
 ## Calculate CLV by simply multiplying all 3 variables & then normalising it between 0 and 1
 df$clv <- df$FREQUENCY_normalised*df$MONEY_normalised*df$RECENCY_normalised
 
-df[ ,c('RECENCY',
+df[ ,c( 'RECENCY',
         'FREQUENCY',
         'MONEY',
         'RECENCY_normalised',
@@ -54,7 +54,10 @@ df[ ,c('RECENCY',
         'MONEY_normalised',
         'Description',
         'InvoiceDate',
-        'CustomerID'
+        'CustomerID',
+        'InvoiceNo',
+        'StockCode',
+        'OrderDetails'
 ):=NULL]
 
 #####################################################################################################
