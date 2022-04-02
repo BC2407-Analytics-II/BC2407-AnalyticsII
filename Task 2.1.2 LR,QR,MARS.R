@@ -61,19 +61,6 @@ generateTrainTest(orders_all_1, 0.7)
 train_orders_all_1 <- train #creating a copy of trainset for orders_all_1 
 test_orders_all_1 <- test #creating a copy of testset for orders_all_1 
 
-
-calculateAccuracy2 = function(predictive_model, test){
-  predictions=predict(predictive_model, newdata = test)
-  summary(predictions)
-  predictions[predictions<=1.4]=1 
-  predictions[(predictions>1.4)&(predictions<=2.4)]=2
-  predictions[(predictions>2.4)&(predictions<=3.4)]=3
-  predictions[(predictions>3.4)&(predictions<=4.4)]=4
-  predictions[predictions>4.4]=5
-  return(mean(predictions == test$review_score))
-}
-
-
 #####################################################################################################
 ####################################    QUANTILE REGRESSION, V1   ###################################
 
@@ -99,37 +86,16 @@ destroyX = function(es) {
 
 destroyX(table)
 
-#moved this up to before linear regression
-# calculateAccuracy2 = function(predictive_model, test){
-#   predictions=predict(predictive_model, newdata = test)
-#   summary(predictions)
-#   predictions[predictions<=1.4]=1 
-#   predictions[(predictions>1.4)&(predictions<=2.4)]=2
-#   predictions[(predictions>2.4)&(predictions<=3.4)]=3
-#   predictions[(predictions>3.4)&(predictions<=4.4)]=4
-#   predictions[predictions>4.4]=5
-#   return(mean(predictions == test$review_score))
-# }
-###################################################
-# qrtable <- function(table){
-#   for( i in 1:length(taus)){
-#     fit <- rq(review_score ~ ., tau=taus[i], data = train)
-#     summ <- summary(fit)
-#     table[1,i+1] = calculateAccuracy2(fit,test)
-#     for (j in 2:23){
-#       if((j %% 2) == 0){table[j,i+1] = summ$coefficients[,1][[j/2]]}
-#       else{table[j,i+1] = summ$coefficients[,4][[(j-1)/2]]}
-#     }
-#     # table[2,i+1] = summ$coefficients[,1][[1]]
-#     # table[3,i+1] = summ$coefficients[,4][[1]]
-#     # table[4,i+1] = summ$coefficients[,1][[2]]
-#     # table[5,i+1] = summ$coefficients[,4][[2]]
-#     # table[6,i+1] = summ$coefficients[,1][[3]]
-#     # table[7,i+1] = summ$coefficients[,4][[3]]
-#   }
-#   return(table)
-# }
-###################################################
+calculateAccuracy2 = function(predictive_model, test){
+  predictions=predict(predictive_model, newdata = test)
+  summary(predictions)
+  predictions[predictions<=1.4]=1
+  predictions[(predictions>1.4)&(predictions<=2.4)]=2
+  predictions[(predictions>2.4)&(predictions<=3.4)]=3
+  predictions[(predictions>3.4)&(predictions<=4.4)]=4
+  predictions[predictions>4.4]=5
+  return(mean(predictions == test$review_score))
+}
 
 
 for( i in 1:length(taus)){
@@ -143,38 +109,8 @@ for( i in 1:length(taus)){
 }
 
 
-###################################################
-
-# ### Fit 50th Percentile Line (i.e. Median) ###
-# fit.p.5 <- rq(review_score ~ . , tau=.5, data = train) #tau: percentile level.
-# 0.5 is the 50th percentile (aka median).
-# #abline(fit.p.5, col="blue")
-# 
-# fit.p.5
-# # summary(fit.p.5)
-# # summary(fit.p.5, se = "nid")
-# 
-# ###Prediction and classification###
-# calculateAccuracy = function(predictive_model, test){
-#     predictions=predict(predictive_model, newdata = test)
-#     summary(predictions)
-#     predictions[predictions<=1.4]=1
-#     predictions[(predictions>1.4)&(predictions<=2.4)]=2
-#     predictions[(predictions>2.4)&(predictions<=3.4)]=3
-#     predictions[(predictions>3.4)&(predictions<=4.4)]=4
-#     predictions[predictions>4.4]=5
-#     print('rating - predictions:')
-#     print(table(predictions))
-#     print('rating - actual:')
-#     print(table(test$review_score))
-#     table(predictions, test$review_score)
-#     table(predictions == test$review_score)
-#     mean(predictions == test$review_score)
-# }
-# calculateAccuracy(fit.p.5, test)
-# summary(orders_all_1$review_score) #Accuracy is 0.58 -> very low
-
 #####################################################################################################
+####################################    QUANTILE REGRESSION, V2   ###################################
 #######                                DERIVING MORE VARIABLES                                #######
 
 orders_all_2 <- orders_all
@@ -291,6 +227,7 @@ calculateAccuracy(fit.p.5.2, test)
 print('hypothesis is correct: linear independances between the time columns 
       (deriatives of each other) caused the singular matrix problem')
 
+
 ###Creating Quantile Regression Table###----
 variable2 = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
               'payment_typevoucher','','payment_installments','','payment_value','',
@@ -310,35 +247,36 @@ for( i in 1:length(taus)){
   }
 }
 
-orders_all_2.3 = orders_all_2
-orders_all_2.3$delta_time_percentage = -orders_all_2.3$delta_time/orders_all_2.3$est_del_time
-orders_all_2.3$del_time = NULL
-orders_all_2.3$est_del_time = NULL
-orders_all_2.3$delta_time = NULL
-generateTrainTest(orders_all_2.3, 0.7)
-fit.p.5.3 <- rq(review_score ~ . , tau=.5, data = train)
-calculateAccuracy(fit.p.5.3, test)
-summary(fit.p.5.3)
-
-
-###Creating Quantile Regression Table###----
-variable3 = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
-              'payment_typevoucher','','payment_installments','','payment_value','','freight_value',
-              '','product_name_lenght','','product_description_lenght','','product_photos_qty','',
-              'Late','','total_price','','freight_ratio','','purchase_day_of_week','',
-              'delta_time_percentage','')
-table3 <- data.frame("Variable"=variable3,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),
-                     "75%"=rep("-",31),"90%"=rep("-",31))
-destroyX(table3)
-for( i in 1:length(taus)){
-  fit <- rq(review_score ~ ., tau=taus[i], data = train)
-  summ <- summary(fit)
-  table3[1,i+1] = calculateAccuracy2(fit,test)
-  for (j in 2:31){
-    if((j %% 2) == 0){table3[j,i+1] = summ$coefficients[,1][[j/2]]}
-    else{table3[j,i+1] = summ$coefficients[,4][[(j-1)/2]]}
-  }
-}
+####################################    QUANTILE REGRESSION, V3 (insignificant)   ###################################
+# orders_all_2.3 = orders_all_2
+# orders_all_2.3$delta_time_percentage = -orders_all_2.3$delta_time/orders_all_2.3$est_del_time
+# orders_all_2.3$del_time = NULL
+# orders_all_2.3$est_del_time = NULL
+# orders_all_2.3$delta_time = NULL
+# generateTrainTest(orders_all_2.3, 0.7)
+# fit.p.5.3 <- rq(review_score ~ . , tau=.5, data = train)
+# calculateAccuracy(fit.p.5.3, test)
+# summary(fit.p.5.3)
+# 
+# 
+# ###Creating Quantile Regression Table###
+# variable3 = c('Accuracy','Intercept','','payment_typecredit_card','','payment_typedebit_card','',
+#               'payment_typevoucher','','payment_installments','','payment_value','','freight_value',
+#               '','product_name_lenght','','product_description_lenght','','product_photos_qty','',
+#               'Late','','total_price','','freight_ratio','','purchase_day_of_week','',
+#               'delta_time_percentage','')
+# table3 <- data.frame("Variable"=variable3,"10%"=rep("-",31),"25%"=rep("-",31),"50%"=rep("-",31),
+#                      "75%"=rep("-",31),"90%"=rep("-",31))
+# destroyX(table3)
+# for( i in 1:length(taus)){
+#   fit <- rq(review_score ~ ., tau=taus[i], data = train)
+#   summ <- summary(fit)
+#   table3[1,i+1] = calculateAccuracy2(fit,test)
+#   for (j in 2:31){
+#     if((j %% 2) == 0){table3[j,i+1] = summ$coefficients[,1][[j/2]]}
+#     else{table3[j,i+1] = summ$coefficients[,4][[(j-1)/2]]}
+#   }
+# }
 
 ###################################################
 
