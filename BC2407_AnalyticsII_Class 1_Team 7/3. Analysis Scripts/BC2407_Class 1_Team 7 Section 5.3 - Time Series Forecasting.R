@@ -465,7 +465,6 @@ arima.3.auto = accuracy(m.arima.forecasts, testset3)
 arima.3.auto
 #######                                          END                                          #######
 
-
 dfTS.forecaster <- arima(dfTS.ts, order=c(0,0,1))
 dfTS.forecasts <- forecast(dfTS.forecaster, h = 12)
 write.csv(fitted(dfTS.forecaster), 'dfTS_fitted.csv')
@@ -476,9 +475,6 @@ df2TS.forecasts <- forecast(df2TS.forecaster, h = 12)
 write.csv(fitted(df2TS.forecaster), 'df2TS_fitted.csv')
 write.csv(df2TS.forecasts, 'df2TS_forecasts.csv')
 
-
-df3TS.forecaster <- arima(df3TS.ts, order=c(1,0,1))
-df3TS.forecasts <- forecast(df3TS.forecaster, h = 12)
-write.csv(fitted(df3TS.forecaster), 'df3TS_fitted.csv')
-write.csv(dfTS.forecasts, 'df3TS_forecasts.csv')
+write.csv(fitted(m.arima.forecasts), 'df3TS_fitted.csv')
+write.csv(m.arima.forecasts, 'df3TS_forecasts.csv')
 
