@@ -1,6 +1,7 @@
-tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
-    paste('Directory is:', getwd())                                     # the 'Data' folder in the
-})                                                                      # group project.
+# set working directory to the relative path of the '2. Datasets' folder of the grp project
+tryCatch(setwd(paste(getwd(),'./../2. Datasets',sep="")), error = function(e) {   
+    paste('Directory is:', getwd())                                               
+})                                                                                
 
 orders <- read.csv("Raw Data/olist_orders_dataset.csv",header = T)
 customers <- read.csv("Raw Data/olist_customers_dataset.csv",header = T)

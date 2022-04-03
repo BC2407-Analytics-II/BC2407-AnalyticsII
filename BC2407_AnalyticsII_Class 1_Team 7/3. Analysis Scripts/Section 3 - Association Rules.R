@@ -4,9 +4,10 @@
 
 # <-------- This R script is formatted to fit on a window of width specified by this line --------> #
 
-tryCatch(setwd(paste(getwd(),'/Data',sep="")), error = function(e) {    # set working directory to 
-  paste('Directory is:', getwd())                                     # the 'Data' folder in the
-})                                                                      # group project.
+# set working directory to the relative path of the '2. Datasets' folder of the grp project
+tryCatch(setwd(paste(getwd(),'./../2. Datasets',sep="")), error = function(e) {   
+    paste('Directory is:', getwd())                                               
+})                                                                                
 
 # import required libraries
 library(arules)
