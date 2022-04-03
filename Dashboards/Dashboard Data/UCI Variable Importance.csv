@@ -1,0 +1,14 @@
+col,used,nsubsets,gcv,gcv.match,rss,rss.match
+Quantity,1,26,100,1,100,1
+CountryEIRE,1,26,100,1,100,1
+CountryNetherlands,1,25,68.47761038,1,68.52315397,1
+InvoiceDate_DayofWeekMonday,1,24,49.05288322,1,49.14122281,1
+InvoiceDate_HourofDay,1,24,49.05288322,1,49.14122281,1
+InvoiceDate_MonthNameOctober,1,18,31.84053239,1,31.95714193,1
+InvoiceDate_MonthNameFebruary,1,17,29.18491089,1,29.30734968,1
+InvoiceDate_DayofWeekSunday,1,16,26.61225669,1,26.74088597,1
+UnitPrice,1,15,24.66197601,1,24.79349745,1
+InvoiceDate_MonthNameNovember,1,12,18.31707706,1,18.46414303,1
+CountryUnited Kingdom,1,11,16.31150385,1,16.46458591,1
+InvoiceDate_MonthNameAugust,1,9,12.15553501,1,12.32743187,1
+InvoiceDate_DayofMonth,1,8,9.789466193,1,9.98144928,1

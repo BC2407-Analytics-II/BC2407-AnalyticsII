@@ -1,0 +1,13 @@
+col,used,nsubsets,gcv,gcv.match,rss,rss.match
+payment_installments,1,22,100,1,100,1
+price,1,22,100,1,100,1
+freight_value,1,19,75.00503057,1,75.3595109,1
+review_score,1,17,65.02901075,1,65.50274228,1
+product_category_name_englishfurniture_decor,1,16,57.46103292,1,58.07091059,1
+payment_typecredit_card,1,13,47.74438107,1,48.41247858,1
+product_category_name_englishtelephony,1,11,41.20626081,1,41.90940563,1
+product_category_name_englishconstruction_tools_construction,1,9,34.41876627,1,35.15899598,1
+product_category_name_englishoffice_furniture,1,8,30.76669346,1,31.53285804,1
+product_category_name_englishconstruction_tools_lights,1,7,26.8997523,1,27.70019442,1
+product_category_name_englishhousewares,1,6,23.24329406,1,24.06654803,1
+payment_typevoucher,1,5,19.80860378,1,20.63774451,1
