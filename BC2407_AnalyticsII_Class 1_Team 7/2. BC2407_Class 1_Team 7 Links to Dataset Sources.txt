@@ -1,0 +1,12 @@
+== UCI:
+https://archive.ics.uci.edu/ml/datasets/online+retail
+> Both raw and final datasets have 'uci_' appended to the front.
+
+== OLIST:
+https://www.kaggle.com/olistbr/brazilian-ecommerce
+> Raw datasets have 'olist_' appended to the front
+> The final cleaned file has 'Orders_' appended to the front
+
+== TIME SERIES:
+https://www.kaggle.com/datasets/rohitsahoo/sales-forecasting
+> This is called timeseries.csv

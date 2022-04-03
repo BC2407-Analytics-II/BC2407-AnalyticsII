@@ -1,0 +1,5 @@
+UCI Trainset Original,UCI Trainset Balanced,Olist Trainset Original,Olist Trainset Balanced
+InvoiceDate_DayofMonth,"InvoiceDate_MonthName, September","payment_type, voucher","product_category_name_english, watches_gifts"
+"InvoiceDate_MonthName, August",InvoiceDate_DayofMonth,"product_category_name_english, housewares","product_category_name_english, home_construction"
+"Country, United Kingdom","Country, Finland","product_category_name_english, construction_tools_lights","product_category_name_english, baby"
+,,,

@@ -1,8 +1,0 @@
-== UCI:
-https://archive.ics.uci.edu/ml/datasets/online+retail
-
-== OLIST:
-https://www.kaggle.com/olistbr/brazilian-ecommerce
-
-== TIME SERIES:
-https://www.kaggle.com/datasets/rohitsahoo/sales-forecasting

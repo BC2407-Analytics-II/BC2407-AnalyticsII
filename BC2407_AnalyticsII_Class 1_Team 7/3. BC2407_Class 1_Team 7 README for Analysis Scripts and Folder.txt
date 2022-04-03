@@ -1,0 +1,36 @@
+README
+
+Project Report - A report detailing our business problem and solutions
+
+Datasets - Contains all datasets used in our analysis
+-Raw Data - Contains all raw data files
+--olist_customers_dataset.csv
+--olist_geolocation_dataset.csv
+--olist_order_items_dataset.csv
+--olist_order_payments_dataset.csv
+--olist_order_reviews_dataset.csv
+--olist_orders_dataset.csv
+--olist_product_category_name_translation.csv
+--olist_products_dataset.csv
+--olist_sellers_dataset.csv
+--timeseries.csv
+-uci_online_retail.csv
+-Orders_all.csv - Cleaned and Merged Olist dataset
+-Orders_merged.csv - Merged Olist dataset
+-Orders_merged_CLV.csv - Merged Olist dataset for CLV analysis
+-Uci_online_retail_cleaned.csv - Cleaned UCI dataset
+-uci_online_retail_cleaned_CLV.csv - Cleaned UCI dataset for CLV analysis
+
+Analysis Scripts - Contains all R/python analysis scripts 
+-helperFns.R - Contains function to generate train-test split
+-Section 2.1 - Data Cleaning UCI eCommerce.ipynb
+-Section 2.2 - Data Cleaning Olist eCommerce.R
+-Section 3 - Association Rules.R
+-Section 4.4-4.6 - Linear Regression, Quantile Regression, MARS.R
+-Section 5 - Random Forest, Logistic Regression, MARS (UCI).R
+-Section 5.3 - Time Series Forecasting.R
+-Section 5.4 - Adding CLV Metrics for UCI and Olist.R
+-Section 5.6-5.8 - Random Forest Logistic Regression, MARS (Olist).R
+-Section 5.6-5.8 - Random Forest, Logistic Regression, MARS (UCI).R
+
+Presentation Slides - Slides summarising our most import findings
