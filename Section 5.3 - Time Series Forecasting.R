@@ -477,6 +477,6 @@ write.csv(df2TS.forecasts, 'df2TS_forecasts.csv')
 
 df3TS.forecaster <- arima(df3TS.ts, order=c(1,0,1))
 df3TS.forecasts <- forecast(df3TS.forecaster, h = 12)
-write.csv(fitted(dfTS.forecaster), 'df3TS_fitted.csv')
+write.csv(fitted(df3TS.forecaster), 'df3TS_fitted.csv')
 write.csv(dfTS.forecasts, 'df3TS_forecasts.csv')
 
